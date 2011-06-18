@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app 
+   xmlns="http://java.sun.com/xml/ns/javaee" 
+   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+   xsi:schemaLocation="http://java.sun.com/xml/ns/javaee"
+   version="2.5">
+  <display-name>Mølleordbog</display-name>
+  <servlet>
+    <servlet-name>molleordbog</servlet-name>
+    <servlet-class>org.bifrost.molleordbog.MolleOrdbog</servlet-class>
+  </servlet>
+  <servlet-mapping>
+    <servlet-name>molleordbog</servlet-name>
+    <url-pattern>/</url-pattern>
+  </servlet-mapping>
+</web-app>
