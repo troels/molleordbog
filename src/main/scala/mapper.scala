@@ -33,7 +33,7 @@ abstract class Mapping {
   def apply(req: Request, uriParts: List[String]): MappingResult
 
   def apply(req: Request, uriParts: Option[List[String]]): MappingResult = 
-    apply(req, uriParts getOrElse ((req.uri split "/" toList) filter (! _.isEmpty)))
+    apply(req, uriParts getOrElse (req.uri split "/" filter (! _.isEmpty) toList))
 
   def apply(req: Request): MappingResult = 
     apply(req, None)
@@ -51,10 +51,7 @@ class MappingPath(pathMatcher: List[MapperElement], action: Mapping) extends Map
     val uriHead :: uriRest = uriParts
     val matcherHead :: matcherRest = matcherParts
 
-    matcherHead matchup (req, uriHead) match {
-      case None => None
-      case Some(newReq) => findBestMatch(newReq, uriRest, matcherRest)
-    }
+    matcherHead matchup (req, uriHead) flatMap (findBestMatch(_, uriRest, matcherRest))
   }
   
   override def apply(req: Request, uriParts: List[String]): MappingResult = {
@@ -92,7 +89,5 @@ abstract class BaseMapping {
   def number(str: String) = new MapperNumber(str)
 
   val mappings: Mapping
-  def apply(req: Request) = {
-    mappings(req)
-  }
+  def apply(req: Request) = mappings(req)
 }

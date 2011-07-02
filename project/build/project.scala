@@ -5,7 +5,9 @@ final class MolleProject(info: ProjectInfo) extends AppengineProject(info) {
   
   val guava = "com.google.guava" % "guava" % "r09"
   val counterfeiter = "org.bifrost" %% "counterfeiter" % "1.0"
-  val scalatestDependency = "org.scalatest" % "scalatest" % "1.2" % "test"
-  val junit = "junit" % "junit" % "4.8.1" % "test"
+  val scalatestDependency = "org.scalatest" %% "scalatest" % "1.6.1" % "test"
+  val apachePoi = "org.apache.poi" % "poi" % "3.7"
+  val apachePoiScratchpad = "org.apache.poi" % "poi-scratchpad" % "3.7"
+  val apacheCommonsIo = "commons-io" % "commons-io" % "2.0.1"
 }
 

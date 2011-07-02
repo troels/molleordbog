@@ -5,10 +5,24 @@
    xsi:schemaLocation="http://java.sun.com/xml/ns/javaee"
    version="2.5">
   <display-name>Mølleordbog</display-name>
+
+  <servlet>
+    <display-name>Remote API Servlet</display-name>
+    <servlet-name>RemoteApiServlet</servlet-name>
+    <servlet-class>com.google.apphosting.utils.remoteapi.RemoteApiServlet</servlet-class>
+    <load-on-startup>1</load-on-startup>
+  </servlet>
+
+  <servlet-mapping>
+    <servlet-name>RemoteApiServlet</servlet-name>
+    <url-pattern>/remote_api</url-pattern>
+  </servlet-mapping>
+
   <servlet>
     <servlet-name>molleordbog</servlet-name>
     <servlet-class>org.bifrost.molleordbog.MolleOrdbog</servlet-class>
   </servlet>
+
   <servlet-mapping>
     <servlet-name>molleordbog</servlet-name>
     <url-pattern>/</url-pattern>
