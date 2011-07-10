@@ -84,12 +84,37 @@ class HttpRequest(request: HttpServletRequest, requestAttributes: Map[String, An
     new HttpRequest(request, requestAttributes + (key -> value))
 }
 
-
+class MockHttpRequest(
+  val uri: String,
+  override val method: HttpMethod = GET,
+  headers: Map[String, List[String]] = Map(),
+  args: Map[String, List[String]] = Map(),
+  session: MHashMap[String, AnyRef] = MHashMap(), 
+  attributes: Map[String,AnyRef] = Map()) extends Request {
+    override def getHeaders(key: String) = headers getOrElse (key, List()) toIterator
+    override def getHeader(key: String) = headers getOrElse (key, List()) headOption
+    
+    override def getArg(key: String) = getArgs(key) headOption
+    override def getArgs(key: String) = args get key getOrElse List()
+    
+    override def getSessionAttribute(key: String) = session get key
+    override def putSessionAttribute(key: String, value: AnyRef) { session(key) = value }
+    
+    override def getRequestAttribute(key: String) = attributes get key
+    override def putRequestAttribute(key: String, value: AnyRef) = 
+      new MockHttpRequest(uri=uri, method=method, headers=headers, args=args, 
+                          session=session, attributes=attributes + (key -> value))
+}
+  
 class HttpResponse(contentString: String, contentType: String, encoding: String = "UTF-8",
                    inputHeaders: List[(String, String)] = List(), val statusCode: Int = 200, 
                    override val statusLine: Option[String] = None) extends Response {
   override def content: Array[Byte] = contentString getBytes encoding
   override def headers = inputHeaders :+ ("Content-Type", "%s; charset=%s" format (contentType, encoding))
+}
+
+object HttpRedirectResponse { 
+  def apply(destination: String) = new HttpRedirectResponse(destination)
 }
 
 class HttpRedirectResponse(destinationUrl: String, val statusCode: Int = 301) extends Response {
@@ -103,6 +128,17 @@ class HttpRedirectResponse(destinationUrl: String, val statusCode: Int = 301) ex
   }
 }
 
+object HttpRequestErrorResponse { 
+  def apply(statusLine: Option[String] = None) = new HttpRequestErrorResponse(statusLine)
+  def defaultError = "Request was not complete"
+}
+
+class HttpRequestErrorResponse(statusLine: Option[String] = None) extends HttpResponse(
+  contentString = statusLine getOrElse HttpRequestErrorResponse.defaultError, 
+  contentType = "text/plain",  
+  statusCode = 400,
+  statusLine = statusLine orElse HttpRequestErrorResponse.defaultError)
+
 object HtmlResponse { 
   def apply(str: String, statusCode: Int = 200, statusLine: Option[String] = None) = 
     new HtmlResponse(str, statusCode = statusCode, statusLine = statusLine) 
@@ -110,3 +146,11 @@ object HtmlResponse {
 
 class HtmlResponse(contentString: String, statusCode: Int= 200, statusLine: Option[String] = None) extends 
      HttpResponse(contentString, "text/html", statusCode = statusCode, statusLine = statusLine)
+
+object TextResponse { 
+  def apply(contentString: String) = 
+    new TextResponse(contentString)
+}
+
+class TextResponse(contentString: String, statusCode: Int = 200, statusLine: Option[String] = None) extends 
+     HttpResponse(contentString, "text/plain", statusCode=statusCode, statusLine=statusLine)

@@ -12,8 +12,11 @@ import org.apache.commons.io.filefilter.FileFilterUtils
 import scala.collection.JavaConversions._
 import scala.collection.mutable.HashMap
 import org.bifrost.molleordbog.model.{Article, Synonym, Model}
+import org.bifrost.molleordbog.model.Implicits._
 import com.googlecode.objectify._
 import org.bifrost.molleordbog.remoteapi.RemoteHandler
+import java.util.regex.Pattern
+import com.google.appengine.api.files.FileServiceFactory
 
 object OfficeHelpers { 
   def readExcelFile(fileName: String) = new HSSFWorkbook(new FileInputStream(fileName))
@@ -40,6 +43,7 @@ object OfficeHelpers {
     0 until rows flatMap { rowNr => safelyNullable(sheet getRow rowNr) } flatMap {
       row => { 
         val (cell0, cell1, cell2) = (row getCell 0, row getCell 1, row getCell 2)
+
         if (cell0 == null || cell1 == null || cell2 == null) {
           println("Error with row: %d" format (row getRowNum))
           None
@@ -121,7 +125,7 @@ object ExtractItems {
 
   case class Word(word: String, number: Int, sources: List[String])
   case class TotalCollection(
-    groupName: String, groupText: String, words: List[Word])
+    groupName: String, groupText: String, words: List[Word], path: String)
   
   val fileName = "/home/troels/src/molleordbog/data/wordlist.xls"
   val docFileDir = new File("/home/troels/src/molleordbog/data/opslagstekster/")
@@ -133,6 +137,9 @@ object ExtractItems {
   }
   
   def collectWordsInDb() {
+    Model.obj.delete(Synonym query)
+    Model.obj.delete(Article query)
+
     val items = OfficeHelpers.readItemsXls(fileName)
     val itemsMap: HashMap[Int, List[ParsedWord]] = new HashMap[Int, List[ParsedWord]]()
     
@@ -140,24 +147,26 @@ object ExtractItems {
       itemsMap(item wordNumber) = item :: (itemsMap getOrElse (item wordNumber, Nil))
     }
     
-    
     val files: Iterable[File] = FileUtils.listFiles(
       docFileDir, FileFilterUtils.suffixFileFilter(".doc"), FileFilterUtils.trueFileFilter)
 
-    val processedFiles = files flatMap { file => (OfficeHelpers readDocFile file.getPath) }
-    val collections = processedFiles map { 
-      contents => 
-        val words = (contents words) flatMap { 
-          case (word, number) =>
-            if (itemsMap contains number) {
-              val words = itemsMap(number)
-              val sources = words map (_ source)
-              Some(Word(word, number, sources))
-            } else { 
-              None
-            }
-        }
-      TotalCollection(contents groupName, (contents groupText) mkString "\n", words)
+    val collections = files flatMap { 
+      file => (OfficeHelpers readDocFile file.getPath) map { 
+        contents => 
+          val words = (contents words) flatMap { 
+            case (word, number) =>
+              if (itemsMap contains number) {
+                val words = itemsMap(number)
+                val sources = words map (_ source)
+                Some(Word(word, number, sources))
+              } else { 
+                None
+              }
+          }
+        TotalCollection(contents groupName, (contents groupText) mkString "\n", words, 
+                        file.getPath replaceFirst ("^" + Pattern.quote(docFileDir.getPath) + "/*", "")
+                        replaceFirst ("\\.doc$", ""))
+      }
     }
     
     collections foreach {
@@ -167,19 +176,88 @@ object ExtractItems {
 
   def addToDb(collection: TotalCollection) { 
     val words = (collection words) map { 
-      word => 
+      word =>
         val synonym = new Synonym 
-        synonym.word = word.word
-        synonym.number = word.number
-        synonym.sources = word.sources
+        synonym.word = (word word)
+        synonym.number = (word number)
+        synonym.sources = (word sources)
         synonym
     }
+    
     val ids = words map { word => new Key(classOf[Synonym], word.number longValue) } 
     val article = new Article()
     article.groupName = collection.groupName
     article.mainSynonym = words(0).word
     article.text = collection.groupText
     article.words = ids
+    article.path = collection.path
     Model.obj.put(article ::  words : _*)
+  }
+}
+
+object PictureExtractor { 
+  val picDir = new File("/home/troels/src/molleordbog/data/opslag_illustrationer")
+  
+  def substitutions = List(
+    ("timber construction" -> "tinberconstruction"),
+    ("securingthewing" -> "secure the wing"),
+    ("fourpiecewing" -> "fourpiecewings"),
+    ("sailmaterials" -> "sail materials"),
+    ("sailproofing" -> "sail proofing"),
+    ("sailropes" -> "sail ropes"),
+    ("wooddensails_DM" -> "woodden sails"),
+    ("settingofthesails" -> "setting of the sails"),
+    ("mountingofsails" -> "mounting of sails"),
+    ("selfreefing_DM" -> "selfreefing"),
+    ("møllens indretning/floorsections", "møllensindretning/floor sections"),
+    ("windingrings" -> "winding rings"),
+    ("windingsystems" -> "winding systems"),
+    ("strongwind" -> "strong wind"))
+
+  def findPicPath(pathPart: String): File = {
+    var f = new File(picDir, pathPart) 
+    if (f exists) return f
+
+    f = new File(picDir, pathPart replaceAll("\\s+", ""))
+    if (f exists) return f
+    
+    f = (substitutions findFirst { 
+      sub => 
+        val fn = new File(picDir, pathPart replace (sub._1, sub._2)) 
+        if (fn exists) Some(fn) else None
+    } get) _1
+
+    f
+  }
+  
+  def main(args: Array[String]) { 
+    RemoteHandler.setUp()
+    
+    Article.query foreach { 
+      article => 
+        article pictures match { 
+          case null => 
+          case pics => Model.obj.delete(pics)
+        }
+        
+        val dir = findPicPath(article path)
+        val pictures = dir.listFiles flatMap { 
+          file => 
+            if (file.getPath endsWith ".jpg") {
+              ap.picture = FileUtils readFileToByteArray file
+              ap.name = (file.getPath replaceFirst ("^.*/", ""))
+              ap.mimetype = "image/jpeg"
+              Some(Model.obj.putOne(ap))
+            } else { 
+              None 
+            }
+        }
+        
+        article.pictures = pictures toList
+      
+        Model.obj.putOne(article)
+    }
+
+    RemoteHandler.tearDown()
   }
 }

@@ -79,7 +79,6 @@ class MappingPathGenerator(path: List[MapperElement]) {
 }
 
 
-
 abstract class BaseMapping { 
   implicit def string2MapperElement(str: String) = new MapperString(str)
   implicit def mapperElement2MappingPath(mp: MapperElement): MappingPathGenerator = new MappingPathGenerator(List(mp))
