@@ -6,6 +6,8 @@ import org.bifrost.utils.http._
 import org.bifrost.utils.mapping._
 import org.bifrost.molleordbog.views._
 
+import com.google.appengine.api.blobstore.BlobstoreServiceFactory
+
 object RequestHandler { 
   def handle(req: Request): Response  = {
     MolleOrdbogMappings(req) match { 

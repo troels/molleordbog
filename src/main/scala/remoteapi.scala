@@ -13,7 +13,15 @@ object RemoteHandler {
   }
 
   def tearDown() { 
-    if (installer == null) return
-    installer.uninstall()
+    if (installer != null) installer.uninstall()
+  }
+
+  def withRemoteHandler[T](body: => T): T = {
+    setUp()
+    try { 
+      body
+    } finally { 
+      tearDown()
+    }
   }
 }

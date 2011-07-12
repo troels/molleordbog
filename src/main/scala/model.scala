@@ -25,6 +25,8 @@ object Implicits {
 
 abstract class BaseRowObj[T](implicit m: Manifest[T]) {
   def query: Query[T] = (Model obj) query (m.erasure.asInstanceOf[Class[T]])
+  def get(key: String) = (Model obj) get (new Key(m.erasure.asInstanceOf[Class[T]], key))
+  def get(key: Long) = (Model obj) get (new Key(m.erasure.asInstanceOf[Class[T]], key))
   def get(key: Key[T]) = (Model obj) get key
   def get(keys: Seq[Key[T]]) = (Model obj) get keys toMap
 }

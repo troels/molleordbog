@@ -17,6 +17,8 @@ import com.googlecode.objectify._
 import org.bifrost.molleordbog.remoteapi.RemoteHandler
 import java.util.regex.Pattern
 import com.google.appengine.api.files.FileServiceFactory
+import com.google.appengine.api.blobstore.{ BlobstoreServiceFactory, BlobKey }
+import java.nio.ByteBuffer
 
 object OfficeHelpers { 
   def readExcelFile(fileName: String) = new HSSFWorkbook(new FileInputStream(fileName))
@@ -230,34 +232,79 @@ object PictureExtractor {
     f
   }
   
-  def main(args: Array[String]) { 
-    RemoteHandler.setUp()
-    
-    Article.query foreach { 
-      article => 
-        article pictures match { 
-          case null => 
-          case pics => Model.obj.delete(pics)
-        }
-        
-        val dir = findPicPath(article path)
-        val pictures = dir.listFiles flatMap { 
-          file => 
-            if (file.getPath endsWith ".jpg") {
-              ap.picture = FileUtils readFileToByteArray file
-              ap.name = (file.getPath replaceFirst ("^.*/", ""))
-              ap.mimetype = "image/jpeg"
-              Some(Model.obj.putOne(ap))
-            } else { 
-              None 
-            }
-        }
-        
-        article.pictures = pictures toList
-      
-        Model.obj.putOne(article)
-    }
+  val host = "localhost"
+  val port = 8080
 
-    RemoteHandler.tearDown()
+  def main(args: Array[String]) { 
+    RemoteHandler.withRemoteHandler {
+      val blobstoreService = BlobstoreServiceFactory getBlobstoreService
+      
+      Article.query foreach { 
+        article => 
+          article pictures match { 
+            case null => 
+            case pics => blobstoreService delete (pics map { new BlobKey(_) } : _*)
+          }
+          article.pictures = List()
+          article.save()
+        
+          val dir = findPicPath(article path)
+          
+          (dir listFiles) foreach { 
+            file => 
+              if (file.getPath endsWith ".jpg") {
+                val url = getUploadUrl(host, port, "/blobs/uploadUrl/")
+
+                println(sendFile(host, port, url, file, "image/jpeg", Map("articleKey" -> article.id.toString)))
+              }
+          }
+      }
+    }
+  }
+
+  import org.apache.http.HttpEntity;
+  import org.apache.http.HttpResponse;
+  import org.apache.http.client.HttpClient;
+  import org.apache.http.client.methods.HttpPost;
+  import org.apache.http.client.methods.HttpGet;
+  import org.apache.http.entity.mime.MultipartEntity
+  import org.apache.http.impl.client.DefaultHttpClient;
+  import org.apache.http.util.EntityUtils;
+  import org.apache.http.entity.mime.content.FileBody
+  import org.apache.http.entity.mime.content.StringBody
+  import org.apache.http.impl.client.BasicResponseHandler;
+  import org.apache.http.impl.client.DefaultRedirectStrategy
+
+  lazy val client = {
+    val cl = new DefaultHttpClient()
+    cl
+  }
+
+  def getUploadUrl(host: String, port: Int, url: String): String =  {
+    val get = new HttpGet("http://%s:%d%s" format (host, port, url))
+    
+    client.execute(get, new BasicResponseHandler)
+  }
+  
+  def sendFile(host: String, port: Int, url: String, file: File, 
+               contentType: String, otherArgs: Map[String, String]) {
+    val post = new HttpPost("http://%s:%d%s" format (host, port, url))
+    
+    val multipart = new MultipartEntity()
+
+    val fileBody = new FileBody(file)
+    multipart.addPart("blob", fileBody)
+    
+    otherArgs foreach { 
+      case (k, v) => multipart.addPart(k, new StringBody(v))
+    }
+    
+    post setEntity multipart
+    
+    try { 
+      client execute (post, new BasicResponseHandler)
+    } catch {
+      case e => 
+    }
   }
 }

@@ -36,6 +36,8 @@ abstract class Request {
    
   def getRequestAttribute(key: String): Option[AnyRef] 
   def putRequestAttribute(key: String, value: AnyRef): Request
+  
+  def originalRequest: Option[HttpServletRequest] = None
 }
 
 abstract class Response {
@@ -68,8 +70,15 @@ class HttpRequest(request: HttpServletRequest, requestAttributes: Map[String, An
   override def method = HttpMethod fromString (request getMethod) get
   override def uri = request getRequestURI
   
-  lazy val arg: Map[String, List[String]] = 
-    (request getParameterMap).asInstanceOf[java.util.Map[String, Array[String]]] mapValues ( _ toList ) toMap
+  val arg: Map[String, List[String]] = {
+    val params = request getParameterNames
+
+    val names: List[String] = (params toList) map { _.toString }
+    
+    names map { 
+      name => (name -> (request getParameterValues name toList))
+    } toMap
+  }  
   
   override def getArg(key: String) = getArgs(key) headOption
   override def getArgs(key: String) = arg get key getOrElse List()
@@ -82,6 +91,8 @@ class HttpRequest(request: HttpServletRequest, requestAttributes: Map[String, An
   override def getRequestAttribute(key: String) = requestAttributes get key
   override def putRequestAttribute(key: String, value: AnyRef) = 
     new HttpRequest(request, requestAttributes + (key -> value))
+
+  override def originalRequest = Some(request)
 }
 
 class MockHttpRequest(
