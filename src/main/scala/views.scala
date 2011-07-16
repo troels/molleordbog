@@ -5,6 +5,7 @@ import org.bifrost.utils.http._
 import org.bifrost.molleordbog.model._
 import org.bifrost.utils.U._
 
+import org.bifrost.utils.templates.TemplateResponse
 import java.text.Collator
 import java.util.Locale
 
@@ -18,7 +19,8 @@ object Utils {
 
 object MolleOrdbogMappings extends BaseMapping {
   lazy val mappings: Mapping = 
-    ("autocomplete" ==> Views.autoComplete) | 
+    ("ordbog" / "autocomplete" ==> Views.autocomplete) | 
+    ("ordbog" / "opslag" ==>  Views.lookup) |
     ("blobs" / (("uploadUrl" ==> Views.uploadUrl) |
                 ("uploadRedirect" ==> Views.uploadRedirect) |
                 ("uploadDone" ==> Views.uploadDone) | 
@@ -34,33 +36,30 @@ object Views {
     req getArg arg map { 
       argVal => f(req, argVal)
     } getOrElse {
-      HttpRequestErrorResponse("Missing argument: %s" format arg)
+      RequestErrorResponse("Missing argument: %s" format arg)
     }
   
   def withArg(arg0: String, arg1: String)(f: (Request, String, String) => Response)(req: Request): Response =
     req getArg arg0 map { 
       argVal0 => withArg(arg1)( (req, argVal1) => f(req, argVal0, argVal1) )(req) 
     } getOrElse {
-      HttpRequestErrorResponse("Missing argument: %s" format arg0)
+      RequestErrorResponse("Missing argument: %s" format arg0)
     }
 
-  def autoComplete: View = withArg("word") {
+  def lookup: View = withArg("word") { 
+    (req, word) => 
+      Article findArticle word match { 
+        case None => new RedirectResponse("/")
+        case Some(article)  => TemplateResponse("main.article", "article" -> article)
+      }
+  }
+
+  def autocomplete: View = withArg("word") {o
     (req, word) => 
       val synonyms = (Synonym findWithPrefix word toList) map (_ word) sortWith { (a, b) =>
         Utils.collator.compare(a toLowerCase, b toLowerCase) == -1 } 
       
       TextResponse(synonyms mkString "\n")
-  }
-
-  def showWord: View = withArg("word") {
-    (req, word) => 
-      (Article findArticle word) map { 
-        article => {
-          val synonyms = article getSynonyms 
-          
-          TextResponse("hello")
-        }
-      } getOrElse HttpRedirectResponse("/")
   }
 
   def uploadUrl: View = {
@@ -77,7 +76,7 @@ object Views {
         case lst => (blobKey getKeyString) :: (lst toList)
       }
       article.save()
-      HttpRedirectResponse("/blobs/uploadDone/")
+      RedirectResponse("/blobs/uploadDone/")
   }
   
   def uploadDone: View = { _ => TextResponse("Upload complete") }

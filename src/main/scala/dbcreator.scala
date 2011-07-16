@@ -20,6 +20,15 @@ import com.google.appengine.api.files.FileServiceFactory
 import com.google.appengine.api.blobstore.{ BlobstoreServiceFactory, BlobKey }
 import java.nio.ByteBuffer
 
+
+import org.apache.http.{HttpEntity, HttpResponse}
+import org.apache.http.client.HttpClient
+import org.apache.http.client.methods.{ HttpPost, HttpGet }
+import org.apache.http.entity.mime.MultipartEntity
+import org.apache.http.impl.client.{DefaultHttpClient, BasicResponseHandler, DefaultRedirectStrategy}
+import org.apache.http.util.EntityUtils;
+import org.apache.http.entity.mime.content.{FileBody, StringBody}
+
 object OfficeHelpers { 
   def readExcelFile(fileName: String) = new HSSFWorkbook(new FileInputStream(fileName))
   
@@ -193,7 +202,12 @@ object ExtractItems {
     article.text = collection.groupText
     article.words = ids
     article.path = collection.path
-    Model.obj.put(article ::  words : _*)
+    val k = Model.obj putOne article
+    
+    words foreach { 
+      w => w.article = k
+    }
+    Model.obj.put(words :_*)
   }
 }
 
@@ -255,30 +269,15 @@ object PictureExtractor {
               if (file.getPath endsWith ".jpg") {
                 val url = getUploadUrl(host, port, "/blobs/uploadUrl/")
 
-                println(sendFile(host, port, url, file, "image/jpeg", Map("articleKey" -> article.id.toString)))
+                sendFile(host, port, url, file, "image/jpeg", Map("articleKey" -> article.id.toString))
               }
           }
       }
     }
   }
 
-  import org.apache.http.HttpEntity;
-  import org.apache.http.HttpResponse;
-  import org.apache.http.client.HttpClient;
-  import org.apache.http.client.methods.HttpPost;
-  import org.apache.http.client.methods.HttpGet;
-  import org.apache.http.entity.mime.MultipartEntity
-  import org.apache.http.impl.client.DefaultHttpClient;
-  import org.apache.http.util.EntityUtils;
-  import org.apache.http.entity.mime.content.FileBody
-  import org.apache.http.entity.mime.content.StringBody
-  import org.apache.http.impl.client.BasicResponseHandler;
-  import org.apache.http.impl.client.DefaultRedirectStrategy
+  lazy val client = new DefaultHttpClient()
 
-  lazy val client = {
-    val cl = new DefaultHttpClient()
-    cl
-  }
 
   def getUploadUrl(host: String, port: Int, url: String): String =  {
     val get = new HttpGet("http://%s:%d%s" format (host, port, url))

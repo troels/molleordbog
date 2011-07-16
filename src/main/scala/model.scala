@@ -14,7 +14,7 @@ import Implicits._
 
 class ObjectifyEnhancer(ob: Objectify) { 
   def putOne[T](obj: T): Key[T] = (ob put (Seq(obj) : _*)).keySet.iterator.next
-  def putMany(objs: AnyRef*) = ob put (objs : _*)
+  def putMany(objs: AnyRef*) = ob put (objs: _*)
   def getOne[T](cls: Class[T], id: Long): Option[T] = ob get (cls, Seq(id) : _*) get id
   def getMany[T](cls: Class[T], objs: Long*): Map[Long, T] = new JMapWrapper((ob get (cls, objs: _*))) toMap
 }
@@ -54,8 +54,7 @@ class Article extends BaseRow {
   def getSynonyms: List[Synonym] = 
     if (words != null) (Synonym get words).values toList else List()
   
-  override def toString = 
-    "Article: %s" format groupName
+  override def toString = "Article: %s" format groupName
 }
   
   

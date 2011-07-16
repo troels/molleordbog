@@ -6,7 +6,7 @@ import org.scalatest.matchers.ShouldMatchers
 import scala.collection.JavaConversions._
 
 import org.bifrost.molleordbog.dbcreator.ExtractItems
-import org.bifrost.molleordbog.model.{Synonym, Model}
+import org.bifrost.molleordbog.model.{Synonym, Model, Article}
 import org.bifrost.utils.templates.OurCounterfeiter
 import org.bifrost.utils.U._
 import org.bifrost.utils.http.MockHttpRequest
@@ -37,13 +37,26 @@ class SimpleTest extends FunSuite with ShouldMatchers with BeforeAndAfterAll {
     query should have size 5
   }
 
+  test("Test find article") { 
+    (Article findArticle "kors") should not equal None
+  }
+
+  def reqTest(uri: String, args: (String, List[String])*) =  {
+    val mockReq = new MockHttpRequest(uri=uri, args=Map(args :_*))
+    RequestHandler handle mockReq content
+  }
+
+  def reqTestBody(uri: String, args: (String, List[String])*) = 
+    new String(reqTest(uri, args: _*), "utf-8")
+    
   test("Autocomplete query") { 
-    val mockReq = new MockHttpRequest(uri="/autocomplete/", args=Map("word" -> List("kor")))
-    val res = new String(RequestHandler handle mockReq content, "utf-8")
+    val res = reqTestBody("/ordbog/autocomplete/", "word" -> List("kor"))
     res should equal (List("kornet hænger", "kornmølle", "kors", "korte krøjestivere", "korte stivere") mkString "\n")
   }
 
-  test("Showword template") { 
-    println(OurCounterfeiter.renderTemplate("main.showWord", map = Map("article" -> "hello")))
+  
+  test("Opslag template") { 
+    val res = reqTestBody("/ordbog/opslag/", "word" -> List("kors"))
+    println(res)
   }
 }

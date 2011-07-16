@@ -124,11 +124,11 @@ class HttpResponse(contentString: String, contentType: String, encoding: String 
   override def headers = inputHeaders :+ ("Content-Type", "%s; charset=%s" format (contentType, encoding))
 }
 
-object HttpRedirectResponse { 
-  def apply(destination: String) = new HttpRedirectResponse(destination)
+object RedirectResponse { 
+  def apply(destination: String) = new RedirectResponse(destination)
 }
 
-class HttpRedirectResponse(destinationUrl: String, val statusCode: Int = 301) extends Response {
+class RedirectResponse(destinationUrl: String, val statusCode: Int = 301) extends Response {
   def headers : List[(String, String)] = List()
   def content: Array[Byte] = null
   
@@ -139,16 +139,16 @@ class HttpRedirectResponse(destinationUrl: String, val statusCode: Int = 301) ex
   }
 }
 
-object HttpRequestErrorResponse { 
-  def apply(statusLine: Option[String] = None) = new HttpRequestErrorResponse(statusLine)
+object RequestErrorResponse { 
+  def apply(statusLine: Option[String] = None) = new RequestErrorResponse(statusLine)
   def defaultError = "Request was not complete"
 }
 
-class HttpRequestErrorResponse(statusLine: Option[String] = None) extends HttpResponse(
-  contentString = statusLine getOrElse HttpRequestErrorResponse.defaultError, 
+class RequestErrorResponse(statusLine: Option[String] = None) extends HttpResponse(
+  contentString = statusLine getOrElse RequestErrorResponse.defaultError, 
   contentType = "text/plain",  
   statusCode = 400,
-  statusLine = statusLine orElse HttpRequestErrorResponse.defaultError)
+  statusLine = statusLine orElse RequestErrorResponse.defaultError)
 
 object HtmlResponse { 
   def apply(str: String, statusCode: Int = 200, statusLine: Option[String] = None) = 
