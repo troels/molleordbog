@@ -1,14 +1,40 @@
 namespace main
 
+def css stylesheet
+ link (rel="stylesheet" type="text/css" href={stylesheet})
+
+def js file
+ script (type="text/javascript" src={file})
+
+def metatag
+ meta (http-equiv="Content-Type" content="text/html; charset=utf-8")
+
+def header
+ div #header-container .container ul.submenu
+   li.menu-item
+    a (href="/ordbog/soeg") | Søg
+   li.menu-item
+    a (href="/ordbog/visuel") | Visuel Søgning
+
+def footer
+ div #footer-container .container
+
 def main
  title: | Mølleordbog
  body:
  html 
   head
+   - metatag
    title | {title}
+   - css {"main.css"}
+   - js {"main.js"}
   body
+   - header
    | {body}
+   - footer
 
+def footer
+ 
 def search word
  html
   body
@@ -20,4 +46,6 @@ def showWord article
 
 def article article
  - main 
-  body: | {article}
+  body: 
+   div #article
+    | { article.mainSynonym }

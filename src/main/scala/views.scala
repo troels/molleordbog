@@ -54,7 +54,7 @@ object Views {
       }
   }
 
-  def autocomplete: View = withArg("word") {o
+  def autocomplete: View = withArg("word") {
     (req, word) => 
       val synonyms = (Synonym findWithPrefix word toList) map (_ word) sortWith { (a, b) =>
         Utils.collator.compare(a toLowerCase, b toLowerCase) == -1 } 
