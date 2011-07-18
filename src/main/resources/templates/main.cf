@@ -10,15 +10,23 @@ def metatag
  meta (http-equiv="Content-Type" content="text/html; charset=utf-8")
 
 def header
- div #header-container .container ul.submenu
-   li.menu-item
-    a (href="/ordbog/soeg") | Søg
-   li.menu-item
-    a (href="/ordbog/visuel") | Visuel Søgning
+ .container
+  #header.container.header
+   img(src="/img/molle_topbar.jpg" alt="forside")
+   ul.submenu
+    list-style: none; 
+    + for menuitem in [{"url": "/ordbog/soeg/", "name": "Søg"},
+                       {"url": "/ordbog/visuel/", "name": "Visuel Søgning"}]
+     li.menu-item
+      a (href={menuitem["url"]}) | { menuitem["name"] }
+ br(clear="both")
 
 def footer
- div #footer-container .container
-
+ .container #footer
+  p | Mølleordbog.dk er Øhavsmuseets ejendom. Medmindre andet er angivet er alt materiale på Mølleordbog.dk 
+    | copyright Øhavsmuseet. Materialet må ikke gengives uden Øhavsmuseets tilladelse. Copyright 2011. Kontakt
+    a(href="mailto:ohavsmuseet@ohavsmuseet.dk") | Øhavsmuseet.
+  
 def main
  title: | Mølleordbog
  body:
@@ -26,15 +34,15 @@ def main
   head
    - metatag
    title | {title}
-   - css {"main.css"}
-   - js {"main.js"}
+   - css {"/css/main.css"}
+   - js {"http://ajax.googleapis.com/ajax/libs/jquery/1.6.1/jquery.min.js"}
+   - js {"/js/main.js"}
   body
    - header
-   | {body}
+   .container
+    | {body}
    - footer
 
-def footer
- 
 def search word
  html
   body
@@ -42,10 +50,29 @@ def search word
 
 def showWord article
  - main 
-  body: | {article}
+  body: 
+   h1 | Hovedsynonym: {article.mainSynonym}
+
+def jslink body cls={""}
+ a(href="javascript: void(0)" class={cls}) | {body}
 
 def article article
  - main 
   body: 
-   div #article
-    | { article.mainSynonym }
+   #article
+    h1 | { article.mainSynonym }
+    #synonyms
+     + for synonym in article.getSynonyms
+      .word
+       span 
+        font-weight: bold;
+        | {synonym.word}
+       + for source in synonym.sources
+        + if for_loop_index_source > 3
+         span.source(style="display: none") 
+          | {source} 
+        + else
+         span.source 
+          | {source}  
+       + if synonym.sources.size > 3
+        - jslink {"Læs mere"}

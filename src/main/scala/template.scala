@@ -8,7 +8,7 @@ import org.bifrost.counterfeiter.Counterfeiter
 import org.bifrost.counterfeiter.Expression.{UntypedExpression, ElementaryExpression }
 
 object OurCounterfeiter { 
-  private lazy val machine = 
+  private def machine =
     Counterfeiter.loadFromDir(new File(getClass.getClassLoader.getResource("templates").getFile))
   
   def renderTemplate(name: String, lst: List[ElementaryExpression] = List(), 

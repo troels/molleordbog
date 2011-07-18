@@ -168,7 +168,8 @@ object ExtractItems {
             case (word, number) =>
               if (itemsMap contains number) {
                 val words = itemsMap(number)
-                val sources = words map (_ source)
+                val sources = words map { _ source } distinct
+
                 Some(Word(word, number, sources))
               } else { 
                 None

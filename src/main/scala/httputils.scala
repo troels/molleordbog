@@ -59,7 +59,7 @@ abstract class Response {
     outputHeaders(resp)
 
     val stream = resp.getOutputStream
-    try { stream.write(content) } finally { stream.close() }
+    try { stream.write(content) } finally { try { stream.close() } catch { case e: java.io.IOException => } }
   }
 }
 
