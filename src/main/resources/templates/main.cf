@@ -93,4 +93,4 @@ def article article
      margin: 10px;
      | {e article.text}
      + for pic in article.pictureUrls
-      img(src={pic})
+      img(src={pic ++ "=s300"})
