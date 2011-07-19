@@ -8,6 +8,7 @@ import org.bifrost.utils.U._
 import org.bifrost.utils.templates.TemplateResponse
 import java.text.Collator
 import java.util.Locale
+import com.google.appengine.api.images.ImagesServiceFactory
 
 import scala.collection.JavaConversions._
 import com.google.appengine.api.blobstore.BlobstoreServiceFactory
@@ -21,10 +22,11 @@ object MolleOrdbogMappings extends BaseMapping {
   lazy val mappings: Mapping = 
     ("ordbog" / "autocomplete" ==> Views.autocomplete) | 
     ("ordbog" / "opslag" ==>  Views.lookup) |
-    ("blobs" / (("uploadUrl" ==> Views.uploadUrl) |
-                ("uploadRedirect" ==> Views.uploadRedirect) |
-                ("uploadDone" ==> Views.uploadDone) | 
-                ("removeBlobs" ==> Views.removeBlobs)))
+    ("blobs" / (
+      ("getBlob" ==> Views.getBlob) |
+      ("uploadUrl" ==> Views.uploadUrl) |
+      ("uploadRedirect" ==> Views.uploadRedirect) |
+      ("uploadDone" ==> Views.uploadDone)))
 }
 
 
@@ -45,6 +47,12 @@ object Views {
     } getOrElse {
       RequestErrorResponse("Missing argument: %s" format arg0)
     }
+  
+      
+  def getBlob: View = withArg("blob") { 
+    (req, blobKey) => 
+      BlobResponse((req originalRequest) get, "image/jpeg", new BlobKey(blobKey))
+  }
 
   def lookup: View = withArg("ord") { 
     (req, word) => 
@@ -53,7 +61,7 @@ object Views {
         case Some(article)  => TemplateResponse("main.article", "article" -> article)
       }
   }
-
+  
   def autocomplete: View = withArg("ord") {
     (req, word) => 
       val synonyms = (Synonym findWithPrefix word toList) map (_ word) sortWith { (a, b) =>
@@ -75,19 +83,14 @@ object Views {
         case null => List(blobKey getKeyString)
         case lst => (blobKey getKeyString) :: (lst toList)
       }
+      val pictureUrl = (ImagesServiceFactory getImagesService) getServingUrl blobKey
+      article.pictureUrls = article.pictureUrls match { 
+        case null => List(pictureUrl)
+        case lst => pictureUrl :: (lst toList)
+      }
       article.save()
       RedirectResponse("/blobs/uploadDone/")
   }
   
   def uploadDone: View = { _ => TextResponse("Upload complete") }
-
-  def removeBlobs: View = withArg("articleKey") {
-    (req, articleKey) => 
-      val article = Article get (java.lang.Long parseLong articleKey)
-      article.pictures match { 
-        case null => 
-        case o => blobstoreService delete (o map { new BlobKey(_) } toList : _*)
-      }
-    TextResponse("Success")
-  }
 }

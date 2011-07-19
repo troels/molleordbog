@@ -5,6 +5,9 @@ import scala.collection.JavaConversions._
 import scala.collection.mutable.{ HashMap => MHashMap }
 import org.bifrost.utils.U._
 
+import com.google.appengine.api.blobstore.BlobstoreServiceFactory
+import com.google.appengine.api.blobstore.BlobKey
+
 object HttpMethod { 
   val httpMethods = List(GET, POST)
 
@@ -51,6 +54,7 @@ abstract class Response {
   def outputHeaders(resp: HttpServletResponse) { 
     headers foreach {case (k, v) => resp.addHeader(k, v)  }
   }    
+
   def toServletResponse(resp: HttpServletResponse) { 
     statusLine match { 
       case Some(line) => resp.sendError(statusCode, line)
@@ -118,11 +122,12 @@ class MockHttpRequest(
                           session=session, attributes=attributes + (key -> value))
 }
   
-class HttpResponse(contentString: String, contentType: String, encoding: String = "UTF-8",
+class HttpResponse(contentString: String, contentType: String, encoding: Option[String] = None,
                    inputHeaders: List[(String, String)] = List(), val statusCode: Int = 200, 
                    override val statusLine: Option[String] = None) extends Response {
-  override def content: Array[Byte] = contentString getBytes encoding
-  override def headers = inputHeaders :+ ("Content-Type", "%s; charset=%s" format (contentType, encoding))
+  override def content: Array[Byte] = contentString getBytes (encoding getOrElse "UTF-8")
+  override def headers = inputHeaders :+ (
+    "Content-Type", if (encoding isEmpty) contentType else "%s;charset=%s" format (contentType, encoding))
 }
 
 object RedirectResponse { 
@@ -166,3 +171,22 @@ object TextResponse {
 
 class TextResponse(contentString: String, statusCode: Int = 200, statusLine: Option[String] = None) extends 
      HttpResponse(contentString, "text/plain", statusCode=statusCode, statusLine=statusLine)
+
+object BlobResponse { 
+  def apply(req: HttpServletRequest, contentType: String, blobKey: BlobKey) = 
+    new BlobResponse(req, contentType, blobKey)
+}
+
+class BlobResponse(req: HttpServletRequest, contentType: String, blobKey: BlobKey) extends 
+      HttpResponse("", contentType) {
+  override def toServletResponse(resp: HttpServletResponse) {
+    
+    resp.setStatus(statusCode)
+    outputHeaders(resp)
+
+    val blobstoreService = BlobstoreServiceFactory getBlobstoreService
+    val byteRange = blobstoreService getByteRange req
+    blobstoreService serve (blobKey, byteRange, resp)
+  }
+}
+

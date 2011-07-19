@@ -61,7 +61,8 @@ class Article extends BaseRow[Article] {
   var text: String = _
   var words: JList[Key[Synonym]] = _
   var pictures: JList[String] = _
-
+  var pictureUrls: JList[String] = _
+  
   def getSynonyms: List[Synonym] = 
     if (words != null) (Synonym get words).values toList else List()
   

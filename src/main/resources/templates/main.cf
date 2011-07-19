@@ -92,3 +92,5 @@ def article article
      border: 1px solid black; padding: 10px;
      margin: 10px;
      | {e article.text}
+     + for pic in article.pictureUrls
+      img(src={pic})
