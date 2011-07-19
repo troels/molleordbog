@@ -58,7 +58,6 @@ object OfficeHelpers {
         val (cell0, cell1, cell2) = (row getCell 0, row getCell 1, row getCell 2)
 
         if (cell0 == null || cell1 == null || cell2 == null) {
-          println("Error with row: %d" format (row getRowNum))
           None
         } else {
           val wordId = readCellValue(cell0)
@@ -71,7 +70,6 @@ object OfficeHelpers {
               Some((number, source))
             }
             case _ => {
-              println("Problem with row: %d, contains: %s" format (row getRowNum, wordNr_source))
               None
             }
           }
@@ -126,7 +124,7 @@ object OfficeHelpers {
     }
     
     res flatMap { case (groupTextStart, rest) => {
-      val groupText = groupTextStart +: (rest takeWhile (!_.isEmpty))
+      val groupText = groupTextStart +: (rest takeWhile { a => !a.isEmpty && !a.startsWith("Tvivlsspørgsmål:") } )
       Some(DocFileOutput(groupName, words, groupText))
       }
     }
@@ -144,12 +142,22 @@ object ExtractItems {
   val docFileDir = new File("/home/troels/src/molleordbog/data/opslagstekster/")
   
   def main(args: Array[String]) { 
-    RemoteHandler.setUp()
-    collectWordsInDb()
-    RemoteHandler.tearDown()
+    RemoteHandler.withRemoteHandler { 
+      collectWordsInDb()
+      PictureExtractor.extractPictures()
+    }
   }
   
   def collectWordsInDb() {
+    val blobstoreService = BlobstoreServiceFactory getBlobstoreService
+
+    (Article query) foreach {
+      article => article pictures match { 
+        case null => 
+        case pics => blobstoreService delete (pics map { new BlobKey(_) } : _*)
+      }
+    }
+
     Model.obj.delete(Synonym query)
     Model.obj.delete(Article query)
 
@@ -240,8 +248,8 @@ object ExtractItems {
         val resText =(intervals foldLeft (article text)) { 
           (text, synmd) => synmd match {
             case (syn, md) => 
-              text.substring(0, md.start) + "<a href='/ordbog/opslag/?ord=" + 
-                (URLEncoder encode (syn.word, "UTF-8")) + ">" +
+              text.substring(0, md.start) + "<a href=\"/ordbog/opslag/?ord=" + 
+                (URLEncoder encode (syn.word, "UTF-8")) + "\">" +
                 text.substring(md.start, md.end) + "</a>" + text.substring(md.end)
           }
         }
@@ -318,29 +326,27 @@ object PictureExtractor {
   
   val host = "localhost"
   val port = 8080
-
-  def main(args: Array[String]) { 
-    RemoteHandler.withRemoteHandler {
-      val blobstoreService = BlobstoreServiceFactory getBlobstoreService
+  
+  def extractPictures() { 
+    val blobstoreService = BlobstoreServiceFactory getBlobstoreService
       
-      Article.query foreach { 
-        article => 
-          article pictures match { 
-            case null => 
-            case pics => blobstoreService delete (pics map { new BlobKey(_) } : _*)
-          }
-          article.pictures = List()
-          article.save()
+    Article.query foreach { 
+      article => 
+        article pictures match { 
+          case null => 
+          case pics => blobstoreService delete (pics map { new BlobKey(_) } : _*)
+        }
+      article.pictures = List()
+      article.save()
         
-          val dir = findPicPath(article path)
+      val dir = findPicPath(article path)
           
-          (dir listFiles) foreach { 
-            file => 
-              if (file.getPath endsWith ".jpg") {
-                val url = getUploadUrl(host, port, "/blobs/uploadUrl/")
-
-                sendFile(host, port, url, file, "image/jpeg", Map("articleKey" -> article.id.toString))
-              }
+      (dir listFiles) foreach { 
+        file => 
+          if (file.getPath endsWith ".jpg") {
+            val url = getUploadUrl(host, port, "/blobs/uploadUrl/")
+            
+            sendFile(host, port, url, file, "image/jpeg", Map("articleKey" -> article.id.toString))
           }
       }
     }

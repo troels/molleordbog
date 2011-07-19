@@ -74,7 +74,7 @@ class Synonym extends BaseRowObj[Synonym] {
 
   override def toString = "%d - %s" format (number, word)
 }
-  
+
 object Model { 
   ObjectifyService.register(classOf[Article])
   ObjectifyService.register(classOf[Synonym])

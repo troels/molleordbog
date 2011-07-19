@@ -56,6 +56,18 @@ def showWord article
 def jslink body click={""} cls={""}
  a(href="javascript: void(0)" onclick={click} class={cls}) | {body}
 
+def source name hidden
+ + if hidden
+  span.source
+   margin: 0px 4px; display: none;
+   | {name} 
+ + else
+  span.source
+   margin: 0px 4px;
+   | {name} 
+   
+
+  
 def synonyms synonyms
  #synonyms
   border: 1px solid black; padding: 10px;
@@ -66,12 +78,8 @@ def synonyms synonyms
      font-weight: bold;
      | {synonym.word}
     + for source in synonym.sources
-     + if for_loop_index_source > 3
-      span.source(style="display: none") | {source} 
-     + else
-      span.source 
-       | {source}  
-    + if synonym.sources.size > 3
+     - source {source} { for_loop_index_source > 3 }
+    + if synonym.sources.size > 4
      - jslink { "Se alle" } { "molle.showSources(this)" }
  
 def article article
