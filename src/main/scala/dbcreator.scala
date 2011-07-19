@@ -248,9 +248,14 @@ object ExtractItems {
         val resText =(intervals foldLeft (article text)) { 
           (text, synmd) => synmd match {
             case (syn, md) => 
-              text.substring(0, md.start) + "<a href=\"/ordbog/opslag/?ord=" + 
+              if (syn.article == article.getKey) { 
+                text.substring(0, md.start) + "<span class=\"ownlink\">" + text.substring(md.start, md.end) + 
+                "</span>" + text.substring(md.end)
+              } else {
+                text.substring(0, md.start) + "<a class=\"interlink\" href=\"/ordbog/opslag/?ord=" + 
                 (URLEncoder encode (syn.word, "UTF-8")) + "\">" +
                 text.substring(md.start, md.end) + "</a>" + text.substring(md.end)
+              }
           }
         }
 

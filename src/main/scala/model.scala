@@ -31,8 +31,19 @@ abstract class BaseRowObj[T](implicit m: Manifest[T]) {
   def get(keys: Seq[Key[T]]) = (Model obj) get keys toMap
 }
 
-abstract class BaseRow { 
+abstract class BaseRow[T](implicit m: Manifest[T]) { 
   def save() = { Model.obj.putOne(this); this }
+
+  private def idField = 
+    ((getClass getDeclaredFields) filterNot { 
+      field => field.getDeclaredAnnotations filter { _.annotationType == classOf[javax.persistence.Id] } isEmpty
+    } headOption) map { _ getName }
+
+  private def id: Long  = ((idField map { getClass getMethod _ } map { 
+    _ invoke this
+  }).get.asInstanceOf[java.lang.Long]) longValue
+
+  def getKey = new Key[T](m.erasure.asInstanceOf[Class[T]], id)
 }
 
 object Article extends BaseRowObj[Article] {
@@ -42,7 +53,7 @@ object Article extends BaseRowObj[Article] {
     }
 }
 
-class Article extends BaseRow { 
+class Article extends BaseRow[Article] { 
   @Id var id: java.lang.Long = _
   @Indexed var path: String = _
   var mainSynonym: String = _
@@ -66,7 +77,7 @@ object Synonym extends BaseRowObj[Synonym] {
     (query filter ("word = ", word) toList) headOption
 }
 
-class Synonym extends BaseRowObj[Synonym] { 
+class Synonym extends BaseRow[Synonym] { 
   @Id var number: java.lang.Long = _
   @Indexed var word: String = _
   @Indexed var sources: JList[String] = _
