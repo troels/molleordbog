@@ -60,8 +60,6 @@ class Article extends BaseRow[Article] {
   var groupName: String = _
   var text: String = _
   var words: JList[Key[Synonym]] = _
-  var pictures: JList[String] = _
-  var pictureUrls: JList[String] = _
   
   def getSynonyms: List[Synonym] = 
     if (words != null) (Synonym get words).values toList else List()
@@ -83,8 +81,12 @@ class Synonym extends BaseRow[Synonym] {
   @Indexed var word: String = _
   @Indexed var sources: JList[String] = _
   var article: Key[Article] = _ 
-
+  var pictureKey: String = _
+  var pictureUrl: String = _
+  
   override def toString = "%d - %s" format (number, word)
+
+  def getArticle: Article = Article get article
 }
 
 object Model { 

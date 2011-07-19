@@ -69,7 +69,8 @@ class MappingSwitch(matchers: Mapping*) extends Mapping {
 }
 
 class MappingAction(func: Request => Response) extends Mapping {
-  override def apply(req: Request, uriParts: List[String]) = if (uriParts isEmpty) (req, func) else None
+  override def apply(req: Request, uriParts: List[String]) = 
+    if (uriParts isEmpty) (req, func) else None
 }
 
 class MappingPathGenerator(path: List[MapperElement]) { 
@@ -77,7 +78,6 @@ class MappingPathGenerator(path: List[MapperElement]) {
   def /(mapping: MappingSwitch) = new MappingPath(path reverse, mapping)
   def ==>(action: Request => Response) = new MappingPath(path reverse, new MappingAction(action))
 }
-
 
 abstract class BaseMapping { 
   implicit def string2MapperElement(str: String) = new MapperString(str)

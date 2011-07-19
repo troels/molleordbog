@@ -151,10 +151,10 @@ object ExtractItems {
   def collectWordsInDb() {
     val blobstoreService = BlobstoreServiceFactory getBlobstoreService
 
-    (Article query) foreach {
-      article => article pictures match { 
-        case null => 
-        case pics => blobstoreService delete (pics map { new BlobKey(_) } : _*)
+    (Synonym query) foreach { 
+      syn => syn pictureKey match { 
+        case null =>
+        case key => blobstoreService delete (new BlobKey(key))
       }
     }
 
@@ -211,7 +211,7 @@ object ExtractItems {
         } else {
           val ending = endings filter { syn.word.endsWith(_) } sortBy { _.length } reverse
           val word = if (ending isEmpty) syn.word else syn.word.substring(0, syn.word.length - ending(0).length)
-          (syn, new Regex("\\b" + (Pattern quote word.toLowerCase) +  "\\p{Alpha}*\\b"))
+          (syn, new Regex("\\b" + (Pattern quote word.toLowerCase) +  "[\\p{javaLowerCase}\\p{javaUpperCase}]*\\b"))
         }
     } 
     
@@ -337,22 +337,23 @@ object PictureExtractor {
       
     Article.query foreach { 
       article => 
-        article pictures match { 
-          case null => 
-          case pics => blobstoreService delete (pics map { new BlobKey(_) } : _*)
-        }
-      article.pictures = List()
-      article.save()
         
       val dir = findPicPath(article path)
-          
+
+      var synonyms = Synonym get (article words) values
+      
+      val regex = "^[\\p{javaLowerCase}\\p{javaUpperCase}]+_([\\p{javaLowerCase}\\p{javaUpperCase}]+)_web.*\\.jpg$".r
       (dir listFiles) foreach { 
-        file => 
-          if (file.getPath endsWith ".jpg") {
-            val url = getUploadUrl(host, port, "/blobs/uploadUrl/")
-            
-            sendFile(host, port, url, file, "image/jpeg", Map("articleKey" -> article.id.toString))
-          }
+        f => f.getName match { 
+          case regex(word) => 
+            synonyms filter { syn => syn.word.toLowerCase.replaceAll(" ", "") == word.toLowerCase } match {
+              case synonym :: lst => 
+                val url = getUploadUrl(host, port, "/blobs/uploadUrl")
+                sendFile(host, port, url, f, "image/jpeg", Map("synonymKey" -> synonym.number.toString))
+              case _ => 
+            }
+          case _ =>
+        }
       }
     }
   }

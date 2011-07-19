@@ -56,9 +56,10 @@ object Views {
 
   def lookup: View = withArg("ord") { 
     (req, word) => 
-      Article findArticle word match { 
+      Synonym findSynonym word match {
         case None => new RedirectResponse("/")
-        case Some(article)  => TemplateResponse("main.article", "article" -> article)
+        case Some(syn) => TemplateResponse(
+          "main.article", "synonym" -> syn, "article" -> (syn getArticle))
       }
   }
   
@@ -74,21 +75,18 @@ object Views {
     _ => TextResponse(blobstoreService createUploadUrl "/blobs/uploadRedirect/")
   }
 
-  def uploadRedirect: View = withArg("articleKey") {
-    (req, articleKey) => 
+  def uploadRedirect: View = withArg("synonymKey") {
+    (req, synonymKey) => 
       val blobKey = (blobstoreService getUploadedBlobs (req.originalRequest get)) get "blob"
-       
-      val article = Article get (java.lang.Long parseLong articleKey)
-      article.pictures = article.pictures match {
-        case null => List(blobKey getKeyString)
-        case lst => (blobKey getKeyString) :: (lst toList)
-      }
       val pictureUrl = (ImagesServiceFactory getImagesService) getServingUrl blobKey
-      article.pictureUrls = article.pictureUrls match { 
-        case null => List(pictureUrl)
-        case lst => pictureUrl :: (lst toList)
-      }
-      article.save()
+
+      val synonym = Synonym get (java.lang.Long parseLong synonymKey)
+
+      synonym.pictureKey = blobKey getKeyString
+
+      synonym.pictureUrl = pictureUrl
+      
+      synonym.save()
       RedirectResponse("/blobs/uploadDone/")
   }
   
