@@ -20,7 +20,7 @@ class ObjectifyEnhancer(ob: Objectify) {
 }
 
 object Implicits { 
-  implicit def objecify2enhancer(ob: Objectify) = new ObjectifyEnhancer(ob)
+  implicit def objectify2enhancer(ob: Objectify) = new ObjectifyEnhancer(ob)
 }
 
 abstract class BaseRowObj[T](implicit m: Manifest[T]) {
@@ -57,8 +57,6 @@ class Article extends BaseRow {
   override def toString = "Article: %s" format groupName
 }
   
-  
-  
 object Synonym extends BaseRowObj[Synonym] { 
   def findWithPrefix(prefix: String): Query[Synonym] =
     (query filter ("word >= ", prefix + "\u0000") 
@@ -76,7 +74,6 @@ class Synonym extends BaseRowObj[Synonym] {
 
   override def toString = "%d - %s" format (number, word)
 }
-
   
 object Model { 
   ObjectifyService.register(classOf[Article])

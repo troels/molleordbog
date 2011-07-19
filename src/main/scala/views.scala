@@ -46,7 +46,7 @@ object Views {
       RequestErrorResponse("Missing argument: %s" format arg0)
     }
 
-  def lookup: View = withArg("word") { 
+  def lookup: View = withArg("ord") { 
     (req, word) => 
       Article findArticle word match { 
         case None => new RedirectResponse("/")
@@ -54,7 +54,7 @@ object Views {
       }
   }
 
-  def autocomplete: View = withArg("word") {
+  def autocomplete: View = withArg("ord") {
     (req, word) => 
       val synonyms = (Synonym findWithPrefix word toList) map (_ word) sortWith { (a, b) =>
         Utils.collator.compare(a toLowerCase, b toLowerCase) == -1 } 

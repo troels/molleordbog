@@ -25,6 +25,7 @@ object POST extends HttpMethod {
 abstract class Request {
   def getHeader(key: String): Option[String]
   def getHeaders(key: String): Iterator[String]
+
   def method: HttpMethod
   def uri: String
   
@@ -34,7 +35,7 @@ abstract class Request {
   def getSessionAttribute(key: String): Option[AnyRef]
   def putSessionAttribute(key: String, value: AnyRef): Unit 
    
-  def getRequestAttribute(key: String): Option[AnyRef] 
+  def getRequestAttribute(key: String): Option [AnyRef] 
   def putRequestAttribute(key: String, value: AnyRef): Request
   
   def originalRequest: Option[HttpServletRequest] = None

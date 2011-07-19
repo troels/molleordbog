@@ -43,20 +43,20 @@ class SimpleTest extends FunSuite with ShouldMatchers with BeforeAndAfterAll {
 
   def reqTest(uri: String, args: (String, List[String])*) =  {
     val mockReq = new MockHttpRequest(uri=uri, args=Map(args :_*))
-    RequestHandler handle mockReq content
+    RequestHandler handle mockReq
   }
 
   def reqTestBody(uri: String, args: (String, List[String])*) = 
-    new String(reqTest(uri, args: _*), "utf-8")
+    new String(reqTest(uri, args: _*) content, "utf-8")
     
   test("Autocomplete query") { 
-    val res = reqTestBody("/ordbog/autocomplete/", "word" -> List("kor"))
+    val res = reqTestBody("/ordbog/autocomplete/", "ord" -> List("kor"))
     res should equal (List("kornet hænger", "kornmølle", "kors", "korte krøjestivere", "korte stivere") mkString "\n")
   }
 
   
   test("Opslag template") { 
-    val res = reqTestBody("/ordbog/opslag/", "word" -> List("kors"))
-    println(res)
+    val res = reqTest("/ordbog/opslag/", "ord" -> List("kors"))
+    res.statusCode should equal (200)
   }
 }

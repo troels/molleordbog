@@ -5,6 +5,7 @@ import org.apache.poi.hssf.usermodel._
 import org.bifrost.utils.U._
 import java.io.{ FileInputStream, File }
 import scala.util.matching.Regex
+import scala.util.matching.Regex.MatchData
 import org.apache.poi.ss.usermodel.Cell.{ CELL_TYPE_STRING, CELL_TYPE_NUMERIC }
 import org.apache.poi.hwpf.extractor.WordExtractor
 import org.apache.commons.io.FileUtils
@@ -20,7 +21,7 @@ import com.google.appengine.api.files.FileServiceFactory
 import com.google.appengine.api.blobstore.{ BlobstoreServiceFactory, BlobKey }
 import java.nio.ByteBuffer
 
-
+import org.bifrost.counterfeiter.U.escapeHtml
 import org.apache.http.{HttpEntity, HttpResponse}
 import org.apache.http.client.HttpClient
 import org.apache.http.client.methods.{ HttpPost, HttpGet }
@@ -28,6 +29,7 @@ import org.apache.http.entity.mime.MultipartEntity
 import org.apache.http.impl.client.{DefaultHttpClient, BasicResponseHandler, DefaultRedirectStrategy}
 import org.apache.http.util.EntityUtils;
 import org.apache.http.entity.mime.content.{FileBody, StringBody}
+import java.net.URLEncoder
 
 object OfficeHelpers { 
   def readExcelFile(fileName: String) = new HSSFWorkbook(new FileInputStream(fileName))
@@ -184,6 +186,70 @@ object ExtractItems {
     collections foreach {
       addToDb(_)
     }
+    
+    val articles = (Article query) toList
+    val endings = List("", "e", "er", "n", "r", "t", "es", "s", "en", "et", "ens", "ets", "ers", "ed", "ede", "eders", "eder", "ene")
+    val exactWords = List("tolde", "kat", "eg", "skrå", "lig", "hånd", "strå")
+    val errorneousWords = List("mus", "hvede", "lus", "ters", "hals", "bos", "ligger", "løber", "lås", "plader", "krans", "line", "halv", "hæl", "hus", "hat")
+
+    val synonyms = (Synonym query) map { 
+      syn => 
+        val word = (syn word) toLowerCase
+        
+        if (exactWords contains word) { 
+          (syn, new Regex("\\b" + (Pattern quote word) + "\\b"))
+        } else if (errorneousWords contains word) { 
+          (syn, new Regex("\\b" + (Pattern quote word) + "(" + (endings map { Pattern quote _ }  mkString "|") + ")\\b"))
+        } else {
+          val ending = endings filter { syn.word.endsWith(_) } sortBy { _.length } reverse
+          val word = if (ending isEmpty) syn.word else syn.word.substring(0, syn.word.length - ending(0).length)
+          (syn, new Regex("\\b" + (Pattern quote word.toLowerCase) +  "\\p{Alpha}*\\b"))
+        }
+    } 
+    
+    def overlaps(m0: MatchData, m1: MatchData): Boolean = 
+      m0.start <= m1.start && m1.start < m0.end || m1.start <= m0.start && m0.start < m1.end
+
+    def merge(lst: List[(Synonym, MatchData)], m: (Synonym, MatchData)): List[(Synonym, MatchData)] = {
+      lst find { case (s, md) => overlaps(md, m._2) } match {
+        case None => m :: lst 
+        case Some((s, md)) => 
+          if (m._2.end - m._2.start <= md.end - md.start) {
+            lst
+          } else {
+            merge(lst filterNot { 
+              case (_, md_) => md.start == md.start && md.end == md_.end
+            }, m)
+          }
+      }
+    }
+          
+
+    articles foreach { 
+      case article => { 
+        val text = (article text) toLowerCase
+
+        val intervals = (synonyms flatMap { 
+          case (synonym, regex) => 
+            (regex findAllIn text matchData) map { 
+              mtch => (synonym, mtch)} toList
+        } foldLeft (List[(Synonym, MatchData)]())) { merge(_, _) } sortBy { 
+          _._2.start 
+        } reverse
+
+        val resText =(intervals foldLeft (article text)) { 
+          (text, synmd) => synmd match {
+            case (syn, md) => 
+              text.substring(0, md.start) + "<a href='/ordbog/opslag/?ord=" + 
+                (URLEncoder encode (syn.word, "UTF-8")) + ">" +
+                text.substring(md.start, md.end) + "</a>" + text.substring(md.end)
+          }
+        }
+
+        article.text = resText
+      }
+    }
+    Model.obj.putMany(articles :_*)
   }
 
   def addToDb(collection: TotalCollection) { 
@@ -197,10 +263,13 @@ object ExtractItems {
     }
     
     val ids = words map { word => new Key(classOf[Synonym], word.number longValue) } 
+    val text = escapeHtml(collection groupText) split "[\n\r]+" map { 
+      "<p>" + _ + "</p>"} mkString "\n"
+
     val article = new Article()
     article.groupName = collection.groupName
     article.mainSynonym = words(0).word
-    article.text = collection.groupText
+    article.text = text
     article.words = ids
     article.path = collection.path
     val k = Model.obj putOne article
@@ -278,7 +347,6 @@ object PictureExtractor {
   }
 
   lazy val client = new DefaultHttpClient()
-
 
   def getUploadUrl(host: String, port: Int, url: String): String =  {
     val get = new HttpGet("http://%s:%d%s" format (host, port, url))

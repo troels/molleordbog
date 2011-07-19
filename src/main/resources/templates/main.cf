@@ -53,26 +53,34 @@ def showWord article
   body: 
    h1 | Hovedsynonym: {article.mainSynonym}
 
-def jslink body cls={""}
- a(href="javascript: void(0)" class={cls}) | {body}
+def jslink body click={""} cls={""}
+ a(href="javascript: void(0)" onclick={click} class={cls}) | {body}
 
+def synonyms synonyms
+ #synonyms
+  border: 1px solid black; padding: 10px;
+  margin: 10px;
+  + for synonym in synonyms
+   .word
+    span 
+     font-weight: bold;
+     | {synonym.word}
+    + for source in synonym.sources
+     + if for_loop_index_source > 3
+      span.source(style="display: none") | {source} 
+     + else
+      span.source 
+       | {source}  
+    + if synonym.sources.size > 3
+     - jslink { "Se alle" } { "molle.showSources(this)" }
+ 
 def article article
  - main 
   body: 
    #article
     h1 | { article.mainSynonym }
-    #synonyms
-     + for synonym in article.getSynonyms
-      .word
-       span 
-        font-weight: bold;
-        | {synonym.word}
-       + for source in synonym.sources
-        + if for_loop_index_source > 3
-         span.source(style="display: none") 
-          | {source} 
-        + else
-         span.source 
-          | {source}  
-       + if synonym.sources.size > 3
-        - jslink {"Læs mere"}
+    - synonyms {article.getSynonyms}
+    #articleText
+     border: 1px solid black; padding: 10px;
+     margin: 10px;
+     | {e article.text}
