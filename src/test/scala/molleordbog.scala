@@ -6,7 +6,7 @@ import org.scalatest.matchers.ShouldMatchers
 import scala.collection.JavaConversions._
 
 import org.bifrost.molleordbog.dbcreator.ExtractItems
-import org.bifrost.molleordbog.model.{Synonym, Model, Article}
+import org.bifrost.molleordbog.model.{Synonym, Model, SynonymGroup}
 import org.bifrost.utils.templates.OurCounterfeiter
 import org.bifrost.utils.U._
 import org.bifrost.utils.http.MockHttpRequest
@@ -34,11 +34,11 @@ class SimpleTest extends FunSuite with ShouldMatchers with BeforeAndAfterAll {
     val query = Model.obj query classOf[Synonym] filter ("word > ", "kor\u0000") filter 
                         ("word < ", "kor\uFFFF") toList
 
-    query should have size 5
+    query should have size 14
   }
 
   test("Test find article") { 
-    (Article findArticle "kors") should not equal None
+    (SynonymGroup findSynonymGroup "kors") should not equal None
   }
 
   def reqTest(uri: String, args: (String, List[String])*) =  {
@@ -50,10 +50,24 @@ class SimpleTest extends FunSuite with ShouldMatchers with BeforeAndAfterAll {
     new String(reqTest(uri, args: _*) content, "utf-8")
     
   test("Autocomplete query") { 
-    val res = reqTestBody("/ordbog/autocomplete/", "ord" -> List("kor"))
-    res should equal (List("kornet hænger", "kornmølle", "kors", "korte krøjestivere", "korte stivere") mkString "\n")
-  }
 
+    val res = reqTestBody("/ordbog/autocomplete/", "ord" -> List("kor"))
+    res should equal (List(
+      "kornet går op i kværnen",
+      "kornet hænger", 
+      "kornmølle", 
+      "kornmøllen", 
+      "kornsække", 
+      "korntilførsel", 
+      "korntønde", 
+      "kors", 
+      "korset", 
+      "korte krøjebjælke", 
+      "korte krøjebjælke", 
+      "korte krøjestiver", 
+      "korte stiver", 
+      "kortskaftet skovl") mkString "\n")
+  }
   
   test("Opslag template") { 
     val res = reqTest("/ordbog/opslag/", "ord" -> List("kors"))

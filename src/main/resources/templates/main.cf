@@ -96,6 +96,6 @@ def article synonym article
       | {e article.text}
     #article-picture
      float: left; width: 300px;
-     + if synonym.pictureUrl
-      img(src={synonym.pictureUrl ++ "=s300"})
+     + if article.pictureUrl
+      img(src={article.pictureUrl ++ "=s300"})
    div(style="clear: both")

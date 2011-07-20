@@ -14,7 +14,8 @@ import Implicits._
 
 class ObjectifyEnhancer(ob: Objectify) { 
   def putOne[T](obj: T): Key[T] = (ob put (Seq(obj) : _*)).keySet.iterator.next
-  def putMany(objs: AnyRef*) = ob put (objs: _*)
+  def putMany[T](objs: BaseRow[T]*) = ob put (objs: _*)
+
   def getOne[T](cls: Class[T], id: Long): Option[T] = ob get (cls, Seq(id) : _*) get id
   def getMany[T](cls: Class[T], objs: Long*): Map[Long, T] = new JMapWrapper((ob get (cls, objs: _*))) toMap
 }
@@ -25,6 +26,7 @@ object Implicits {
 
 abstract class BaseRowObj[T](implicit m: Manifest[T]) {
   def query: Query[T] = (Model obj) query (m.erasure.asInstanceOf[Class[T]])
+
   def get(key: String) = (Model obj) get (new Key(m.erasure.asInstanceOf[Class[T]], key))
   def get(key: Long) = (Model obj) get (new Key(m.erasure.asInstanceOf[Class[T]], key))
   def get(key: Key[T]) = (Model obj) get key
@@ -46,27 +48,6 @@ abstract class BaseRow[T](implicit m: Manifest[T]) {
   def getKey = new Key[T](m.erasure.asInstanceOf[Class[T]], id)
 }
 
-object Article extends BaseRowObj[Article] {
-  def findArticle(word: String) =
-    (Synonym findSynonym word) map { 
-      synonym => Article get (synonym article)
-    }
-}
-
-class Article extends BaseRow[Article] { 
-  @Id var id: java.lang.Long = _
-  @Indexed var path: String = _
-  var mainSynonym: String = _
-  var groupName: String = _
-  var text: String = _
-  var words: JList[Key[Synonym]] = _
-  
-  def getSynonyms: List[Synonym] = 
-    if (words != null) (Synonym get words).values toList else List()
-  
-  override def toString = "Article: %s" format groupName
-}
-  
 object Synonym extends BaseRowObj[Synonym] { 
   def findWithPrefix(prefix: String): Query[Synonym] =
     (query filter ("word >= ", prefix + "\u0000") 
@@ -74,24 +55,52 @@ object Synonym extends BaseRowObj[Synonym] {
   
   def findSynonym(word: String): Option[Synonym] = 
     (query filter ("word = ", word) toList) headOption
+
+  def apply(): Synonym = new Synonym
 }
 
-class Synonym extends BaseRow[Synonym] { 
+class Synonym extends BaseRow[Synonym] {
   @Id var id: java.lang.Long = _
-  @Indexed var number: java.lang.Long = _
   @Indexed var word: String = _
   @Indexed var sources: JList[String] = _
-  var article: Key[Article] = _ 
+  var synonymGroup: Key[SynonymGroup] = _
+  var artificial: Boolean = _
+  
+  override def toString = "%s - %s" format (word, sources mkString ", ")
+
+  def getSynonymGroup: SynonymGroup = SynonymGroup get synonymGroup 
+}
+
+object SynonymGroup extends BaseRowObj[SynonymGroup] {
+  def findSynonymGroup(word: String) = 
+    Synonym findSynonym word map { 
+      syn => SynonymGroup get (syn synonymGroup)
+    }
+
+  def apply(): SynonymGroup = new SynonymGroup
+}
+
+class SynonymGroup extends BaseRow[SynonymGroup] { 
+  @Id var id: java.lang.Long = _
+  @Indexed var number: java.lang.Long = _
+
+  var text: String = _
+  var canonicalWord: String = _
+  var path: String = _
+  var synonyms: JList[Key[Synonym]] = _
+
   var pictureKey: String = _
   var pictureUrl: String = _
-  
-  override def toString = "%d - %s" format (number, word)
 
-  def getArticle: Article = Article get article
+  override def toString = "%d - %s" format (number, canonicalWord)
+
+  def getSynonyms: List[Synonym] = 
+    if (synonyms != null) ((Synonym get synonyms) values) toList else List()
+
 }
 
 object Model { 
-  ObjectifyService.register(classOf[Article])
+  ObjectifyService.register(classOf[SynonymGroup])
   ObjectifyService.register(classOf[Synonym])
   
   lazy val obj = ObjectifyService begin

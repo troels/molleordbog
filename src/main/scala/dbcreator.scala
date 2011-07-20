@@ -12,7 +12,7 @@ import org.apache.commons.io.FileUtils
 import org.apache.commons.io.filefilter.FileFilterUtils
 import scala.collection.JavaConversions._
 import scala.collection.mutable.HashMap
-import org.bifrost.molleordbog.model.{Article, Synonym, Model}
+import org.bifrost.molleordbog.model.{Synonym, SynonymGroup, Model}
 import org.bifrost.molleordbog.model.Implicits._
 import com.googlecode.objectify._
 import org.bifrost.molleordbog.remoteapi.RemoteHandler
@@ -134,10 +134,6 @@ object OfficeHelpers {
 object ExtractItems {
   import OfficeHelpers.{ParsedWord, DocFileOutput }
 
-  case class Word(word: String, number: Int, sources: List[String])
-  case class TotalCollection(
-    groupName: String, groupText: String, words: List[Word], path: String)
-  
   val fileName = "/home/troels/src/molleordbog/data/wordlist.xls"
   val docFileDir = new File("/home/troels/src/molleordbog/data/opslagstekster/")
   
@@ -151,15 +147,15 @@ object ExtractItems {
   def collectWordsInDb() {
     val blobstoreService = BlobstoreServiceFactory getBlobstoreService
 
-    (Synonym query) foreach { 
-      syn => syn pictureKey match { 
+    (SynonymGroup query) foreach { 
+      sg => sg pictureKey match { 
         case null =>
         case key => blobstoreService delete (new BlobKey(key))
       }
     }
 
+    Model.obj.delete(SynonymGroup query)
     Model.obj.delete(Synonym query)
-    Model.obj.delete(Article query)
 
     val items = OfficeHelpers.readItemsXls(fileName)
     val itemsMap: HashMap[Int, List[ParsedWord]] = new HashMap[Int, List[ParsedWord]]()
@@ -171,35 +167,65 @@ object ExtractItems {
     val files: Iterable[File] = FileUtils.listFiles(
       docFileDir, FileFilterUtils.suffixFileFilter(".doc"), FileFilterUtils.trueFileFilter)
 
-    val collections = files flatMap { 
-      file => (OfficeHelpers readDocFile file.getPath) map { 
-        contents => 
-          val words = (contents words) flatMap { 
+    val syns: List[Synonym] = files flatMap { 
+      file => 
+        (OfficeHelpers readDocFile file.getPath) map { 
+          contents => (contents words) flatMap { 
             case (word, number) =>
               if (itemsMap contains number) {
                 val _words = itemsMap(number)
                 val sources = _words map { _ source } distinct
+                
+                val synonymGroup = SynonymGroup()
+                synonymGroup.canonicalWord = word
+                synonymGroup.number = number
+                
+                val wordMap: HashMap[String, List[String]] = new HashMap
+                
+                _words foreach { 
+                  pw => {
+                    val word = pw.word.toLowerCase.replaceAll("\\]|\\[", "").trim
+                    wordMap(word) = pw.source :: (wordMap getOrElse (word, List()))
+                  }
+                }
 
-                Some(Word(word, number, sources))
-              } else { 
-                List()
+                val synonyms = wordMap map { 
+                  case (k, v) => {
+                    val syn = new Synonym
+                    syn.word = k
+                    syn.sources = v
+                    syn
+                  }
+                } toList
+                
+                Model.obj.putMany(synonyms :_*)
+                
+                synonymGroup.text = ((contents groupText) mkString "\n")
+                synonymGroup.path = (
+                  file.getPath replaceFirst ("^" + (Pattern quote (docFileDir getPath)) + "/*", "") replaceFirst
+                  ("\\.doc$", ""))
+                synonymGroup.synonyms = (synonyms map { _ getKey }) toList
+                
+                synonymGroup.save()
+                synonyms foreach {
+                  s => s.synonymGroup = synonymGroup getKey
+                }
+                
+                synonyms
+              } else {
+                List[Synonym]()
               }
-          }
-        
-        TotalCollection(contents groupName, (contents groupText) mkString "\n", words, 
-                        file.getPath replaceFirst ("^" + Pattern.quote(docFileDir.getPath) + "/*", "")
-                        replaceFirst ("\\.doc$", ""))
-      }
-    }
+          } 
+      } getOrElse List[Synonym]()
+    } toList
     
-    collections foreach {
-      addToDb(_)
-    }
+    Model.obj.putMany(syns : _*)
     
-    val articles = (Article query) toList
-    val endings = List("", "e", "er", "n", "r", "t", "es", "s", "en", "et", "ens", "ets", "ers", "ed", "ede", "eders", "eder", "ene")
+    val endings = List("", "e", "er", "n", "r", "t", "es", "s", "en", "et", "ens", "ets", 
+                       "ers", "ed", "ede", "eders", "eder", "ene")
     val exactWords = List("tolde", "kat", "eg", "skrå", "lig", "hånd", "strå")
-    val errorneousWords = List("mus", "hvede", "lus", "ters", "hals", "bos", "ligger", "løber", "lås", "plader", "krans", "line", "halv", "hæl", "hus", "hat")
+    val errorneousWords = List("mus", "hvede", "lus", "ters", "hals", "bos", "ligger", 
+                               "løber", "lås", "plader", "krans", "line", "halv", "hæl", "hus", "hat")
 
     val synonyms = (Synonym query) map { 
       syn => 
@@ -234,9 +260,9 @@ object ExtractItems {
     }
           
 
-    articles foreach { 
-      case article => { 
-        val text = (article text) toLowerCase
+    val groups = (SynonymGroup.query) map { 
+      case sg => { 
+        val text = (sg text) toLowerCase
 
         val intervals = (synonyms flatMap { 
           case (synonym, regex) => 
@@ -246,10 +272,10 @@ object ExtractItems {
           _._2.start 
         } reverse
 
-        val resText =(intervals foldLeft (article text)) { 
+        val resText =(intervals foldLeft (sg text)) { 
           (text, synmd) => synmd match {
             case (syn, md) => 
-              if (syn.article == article.getKey) { 
+              if (syn.synonymGroup == sg.getKey) { 
                 text.substring(0, md.start) + "<span class=\"ownlink\">" + text.substring(md.start, md.end) + 
                 "</span>" + text.substring(md.end)
               } else {
@@ -260,40 +286,12 @@ object ExtractItems {
           }
         }
 
-        article.text = resText
+        sg.text = resText
+        sg
       }
-    }
-    Model.obj.putMany(articles :_*)
-  }
+    } toList
 
-  def addToDb(collection: TotalCollection) { 
-    val words = (collection words) map { 
-      word =>
-        val synonym = new Synonym 
-        synonym.word = (word word)
-        synonym.number = (word number)
-        synonym.sources = (word sources)
-        synonym
-    }
-    Model.obj.put(words :_*)
-
-    val ids = words map { word => new Key(classOf[Synonym], word.id longValue) } 
-    val text = escapeHtml(collection groupText) split "[\n\r]+" map { 
-      "<p>" + _ + "</p>"} mkString "\n"
-
-    val article = new Article()
-    article.groupName = collection.groupName
-    article.mainSynonym = words(0).word
-    article.text = text
-    article.words = ids
-    article.path = collection.path
-    val k = Model.obj putOne article
-    
-    words foreach { 
-      w => w.article = k
-    }
-
-    Model.obj.put(words :_*)
+    Model.obj.putMany(groups: _*)
   }
 }
 
@@ -338,26 +336,25 @@ object PictureExtractor {
   def extractPictures() { 
     val blobstoreService = BlobstoreServiceFactory getBlobstoreService
       
-    Article.query foreach { 
-      article => 
-        
-      val dir = findPicPath(article path)
+    SynonymGroup.query foreach { 
+      sg => 
+        val dir = findPicPath(sg path)
 
-      var synonyms = Synonym get (article words) values
+        var synonyms = Synonym get (sg synonyms) values
       
-      val regex = "^[\\p{javaLowerCase}\\p{javaUpperCase}]+_([\\p{javaLowerCase}\\p{javaUpperCase}]+)_web.*\\.jpg$".r
-      (dir listFiles) foreach { 
-        f => f.getName match { 
-          case regex(word) => 
-            synonyms filter { syn => syn.word.toLowerCase.replaceAll(" ", "") == word.toLowerCase } match {
-              case synonym :: lst => 
-                val url = getUploadUrl(host, port, "/blobs/uploadUrl")
-                sendFile(host, port, url, f, "image/jpeg", Map("synonymKey" -> synonym.id.toString))
-              case _ => 
-            }
-          case _ =>
+        val regex = "^[\\p{javaLowerCase}\\p{javaUpperCase}]+_([\\p{javaLowerCase}\\p{javaUpperCase}]+)_web.*\\.jpg$".r
+        (dir listFiles) foreach { 
+          f => f.getName match { 
+            case regex(word) => 
+              synonyms filter { syn => syn.word.toLowerCase.replaceAll(" ", "") == word.toLowerCase } match {
+                case synonym :: lst => 
+                  val url = getUploadUrl(host, port, "/blobs/uploadUrl")
+                  sendFile(host, port, url, f, "image/jpeg", Map("synonymGroupKey" -> sg.id.toString))
+                case o => println("Failed finding: " + o)
+              }
+            case _ =>
+          }
         }
-      }
     }
   }
 

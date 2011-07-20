@@ -61,7 +61,7 @@ object Views {
         case Some(syn) => TemplateResponse(
           "main.article", 
           "synonym" -> syn, 
-          "article" -> (syn getArticle))
+          "article" -> (syn getSynonymGroup))
       }
   }
   
@@ -77,18 +77,18 @@ object Views {
     _ => TextResponse(blobstoreService createUploadUrl "/blobs/uploadRedirect/")
   }
 
-  def uploadRedirect: View = withArg("synonymKey") {
-    (req, synonymKey) => 
+  def uploadRedirect: View = withArg("synonymGroupKey") {
+    (req, synonymGroupKey) => 
       val blobKey = (blobstoreService getUploadedBlobs (req.originalRequest get)) get "blob"
       val pictureUrl = (ImagesServiceFactory getImagesService) getServingUrl blobKey
 
-      val synonym = Synonym get (java.lang.Long parseLong synonymKey)
+      val sg = SynonymGroup get (java.lang.Long parseLong synonymGroupKey)
 
-      synonym.pictureKey = blobKey getKeyString
+      sg.pictureKey = blobKey getKeyString
 
-      synonym.pictureUrl = pictureUrl
+      sg.pictureUrl = pictureUrl
       
-      synonym.save()
+      sg.save()
       RedirectResponse("/blobs/uploadDone/")
   }
   
