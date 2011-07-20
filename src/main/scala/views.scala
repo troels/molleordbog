@@ -59,7 +59,9 @@ object Views {
       Synonym findSynonym word match {
         case None => new RedirectResponse("/")
         case Some(syn) => TemplateResponse(
-          "main.article", "synonym" -> syn, "article" -> (syn getArticle))
+          "main.article", 
+          "synonym" -> syn, 
+          "article" -> (syn getArticle))
       }
   }
   

@@ -82,13 +82,20 @@ def synonyms synonyms
     + if synonym.sources.size > 4
      - jslink { "Se alle" } { "molle.showSources(this)" }
  
-def article article
+def article synonym article
  - main 
   body: 
    #article
-    h1 | { article.mainSynonym }
-    - synonyms {article.getSynonyms}
-    #articleText
-     border: 1px solid black; padding: 10px;
-     margin: 10px;
-     | {e article.text}
+    h1 | { synonym.word }
+    #article-texts
+     float: left; width: 500px;
+     - synonyms {article.getSynonyms}
+     #article-text
+      border: 1px solid black; padding: 10px;
+      margin: 10px;
+      | {e article.text}
+    #article-picture
+     float: left; width: 300px;
+     + if synonym.pictureUrl
+      img(src={synonym.pictureUrl ++ "=s300"})
+   div(style="clear: both")

@@ -77,7 +77,8 @@ object Synonym extends BaseRowObj[Synonym] {
 }
 
 class Synonym extends BaseRow[Synonym] { 
-  @Id var number: java.lang.Long = _
+  @Id var id: java.lang.Long = _
+  @Indexed var number: java.lang.Long = _
   @Indexed var word: String = _
   @Indexed var sources: JList[String] = _
   var article: Key[Article] = _ 

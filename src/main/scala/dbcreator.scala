@@ -177,14 +177,15 @@ object ExtractItems {
           val words = (contents words) flatMap { 
             case (word, number) =>
               if (itemsMap contains number) {
-                val words = itemsMap(number)
-                val sources = words map { _ source } distinct
+                val _words = itemsMap(number)
+                val sources = _words map { _ source } distinct
 
                 Some(Word(word, number, sources))
               } else { 
-                None
+                List()
               }
           }
+        
         TotalCollection(contents groupName, (contents groupText) mkString "\n", words, 
                         file.getPath replaceFirst ("^" + Pattern.quote(docFileDir.getPath) + "/*", "")
                         replaceFirst ("\\.doc$", ""))
@@ -274,8 +275,9 @@ object ExtractItems {
         synonym.sources = (word sources)
         synonym
     }
-    
-    val ids = words map { word => new Key(classOf[Synonym], word.number longValue) } 
+    Model.obj.put(words :_*)
+
+    val ids = words map { word => new Key(classOf[Synonym], word.id longValue) } 
     val text = escapeHtml(collection groupText) split "[\n\r]+" map { 
       "<p>" + _ + "</p>"} mkString "\n"
 
@@ -290,6 +292,7 @@ object ExtractItems {
     words foreach { 
       w => w.article = k
     }
+
     Model.obj.put(words :_*)
   }
 }
@@ -349,7 +352,7 @@ object PictureExtractor {
             synonyms filter { syn => syn.word.toLowerCase.replaceAll(" ", "") == word.toLowerCase } match {
               case synonym :: lst => 
                 val url = getUploadUrl(host, port, "/blobs/uploadUrl")
-                sendFile(host, port, url, f, "image/jpeg", Map("synonymKey" -> synonym.number.toString))
+                sendFile(host, port, url, f, "image/jpeg", Map("synonymKey" -> synonym.id.toString))
               case _ => 
             }
           case _ =>
