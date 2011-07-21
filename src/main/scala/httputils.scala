@@ -190,6 +190,7 @@ object BlobResponse {
 
 class BlobResponse(req: HttpServletRequest, contentType: String, blobKey: BlobKey) extends 
       HttpResponse("", contentType) {
+ 
   override def toServletResponse(resp: HttpServletResponse) {
     
     resp.setStatus(statusCode)

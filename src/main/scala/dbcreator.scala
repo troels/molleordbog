@@ -123,10 +123,10 @@ object OfficeHelpers {
       case _ => None
     }
     
-    res flatMap { case (groupTextStart, rest) => {
-      val groupText = groupTextStart +: (rest takeWhile { a => !a.isEmpty && !a.startsWith("Tvivlsspørgsmål:") } )
-      Some(DocFileOutput(groupName, words, groupText))
-      }
+    res flatMap { 
+      case (groupTextStart, rest) => 
+        val groupText = groupTextStart +: (rest takeWhile { a => !a.isEmpty && !a.startsWith("Tvivlsspørgsmål:") } )
+        Some(DocFileOutput(groupName, words, groupText))
     }
   }
 }
@@ -231,9 +231,9 @@ object ExtractItems {
                                "løber", "lås", "plader", "krans", "line", "halv", "hæl", "hus", "hat", "grund", 
                                "sten", "ben", "ret", "led", "skur", "is", "kar", "byg", "let", "kran", "ås",
                                "grene", "råen", "nød", "top", "nøder", "kile", "bille", "skee", "skar", "spes", 
-                               "lur", "solen", "rine")
+                               "lur", "solen", "rine", "hvas", "alle")
 
-    val synonyms = ((Synonym query) toList) sortBy { _.word.length } map { 
+    val synonyms = (((Synonym query) toList) sortBy { _.word.length } reverse )map { 
       syn => 
         val word = (syn word) toLowerCase
         
@@ -336,19 +336,26 @@ object PictureExtractor {
     f
   }
   
-  val host = "localhost"
-  val port = 8080
+  def main(args: Array[String]) { 
+    RemoteHandler.withRemoteHandler { 
+      extractPictures()
+    }
+  }
+
+  val host = "molleguiden.appspot.com"
+  val port = 80
   
   def extractPictures() { 
     val blobstoreService = BlobstoreServiceFactory getBlobstoreService
     
     val synonyms = (Synonym query) map { syn => (syn.word.toLowerCase.replaceAll(" ", ""), syn.getSynonymGroup) } toMap
-    
-    val paths = (SynonymGroup query)  map { sg => findPicPath(sg path) }
-    val sgWord = (SynonymGroup query) map { sg => (sg.canonicalWord -> sg) } toMap
+
+    val sgs = (SynonymGroup query) toList
+    val paths = sgs map { sg => findPicPath(sg path) } distinct
+    val sgWord = sgs map { sg => (sg.canonicalWord -> sg) } toMap
     val regex = "^[\\p{javaLowerCase}\\p{javaUpperCase}]+_([\\p{javaLowerCase}\\p{javaUpperCase}]+)_web.*\\.jpg$".r
 
-    paths foreach { 
+    (paths distinct) foreach { 
       dir => (dir listFiles) foreach { 
         f => f.getName match { 
           case regex(word) => {
@@ -360,7 +367,7 @@ object PictureExtractor {
               val url = getUploadUrl(host, port, "/blobs/uploadUrl")
               sendFile(host, port, url, f, "image/jpeg", Map("synonymGroupKey" -> sgWord(lWord).id.toString))
             } else {
-              //println("Failed to find word: " + word + " " + f.getName)
+              println("Failed to find word: " + word + " " + f.getName)
             }
           }
           case _ =>
@@ -379,11 +386,16 @@ object PictureExtractor {
   
   def sendFile(host: String, port: Int, url: String, file: File, 
                contentType: String, otherArgs: Map[String, String]) {
-    val post = new HttpPost("http://%s:%d%s" format (host, port, url))
+    val post = 
+      if (url.startsWith("http://")) {
+        new HttpPost(url)
+      } else { 
+        new HttpPost("http://%s:%d%s" format (host, port, url))
+      }
     
     val multipart = new MultipartEntity()
 
-    val fileBody = new FileBody(file)
+    val fileBody = new FileBody(file, contentType)
     multipart.addPart("blob", fileBody)
     
     otherArgs foreach { 
@@ -395,7 +407,7 @@ object PictureExtractor {
     try { 
       client execute (post, new BasicResponseHandler)
     } catch {
-      case e => 
+      case e => println(e)
     }
   }
 }

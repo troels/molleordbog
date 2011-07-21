@@ -18,7 +18,7 @@ def header
    img(src="/img/molle_topbar.jpg" alt="forside")
    ul.submenu
     list-style: none; 
-    + for menuitem in [{"url": "/ordbog/soeg/", "name": "Søg"},
+    + for menuitem in [{"url": "/soeg/", "name": "Søg"},
                        {"url": "/ordbog/visuel/", "name": "Visuel Søgning"}]
      li.menu-item
       a (href={menuitem["url"]}) | { menuitem["name"] }
