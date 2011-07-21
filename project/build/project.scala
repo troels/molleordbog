@@ -13,7 +13,8 @@ final class MolleProject(info: ProjectInfo) extends AppengineProject(info) {
   val apacheCommonsIo = "commons-io" % "commons-io" % "2.0.1"
   val httpClient = "org.apache.httpcomponents" % "httpclient" % "4.1.1"
   val httpMime = "org.apache.httpcomponents" % "httpmime" % "4.1.1"
-
+  val jsonLib = "net.liftweb" %% "lift-json" % "2.4-M3"
+  
   override def testClasspath = super.testClasspath +++ (path("lib_test") * "*.jar")
 
   lazy val staticFiles = task {

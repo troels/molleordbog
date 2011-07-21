@@ -42,10 +42,17 @@ abstract class Mapping {
 }
 
 
+object FrontpageMapping {
+  def apply() = new FrontpageMapping()
+}
+
+class FrontpageMapping()
+
+  
 class MappingPath(pathMatcher: List[MapperElement], action: Mapping) extends Mapping {
   private def findBestMatch(req: Request, uriParts: List[String], 
                             matcherParts: List[MapperElement]): Option[(Request, List[String])] = {
-    if (matcherParts.isEmpty) return (req, uriParts)
+    if (matcherParts isEmpty) return (req, uriParts)
     if (uriParts isEmpty) return None
     
     val uriHead :: uriRest = uriParts
@@ -83,7 +90,8 @@ abstract class BaseMapping {
   implicit def string2MapperElement(str: String) = new MapperString(str)
   implicit def mapperElement2MappingPath(mp: MapperElement): MappingPathGenerator = new MappingPathGenerator(List(mp))
   implicit def string2MappingPath(str: String): MappingPathGenerator = new MapperString(str)
-  
+  implicit def frontpage2Mapping(fp: FrontpageMapping): MappingPathGenerator = new MappingPathGenerator(List())
+
   def slug(str: String) = new MapperSlug(str)
   def number(str: String) = new MapperNumber(str)
 

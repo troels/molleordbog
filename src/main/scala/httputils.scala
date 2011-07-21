@@ -5,6 +5,10 @@ import scala.collection.JavaConversions._
 import scala.collection.mutable.{ HashMap => MHashMap }
 import org.bifrost.utils.U._
 
+import net.liftweb.json.render
+import net.liftweb.json.Printer.pretty
+import net.liftweb.json.JsonAST.JValue
+
 import com.google.appengine.api.blobstore.BlobstoreServiceFactory
 import com.google.appengine.api.blobstore.BlobKey
 
@@ -171,6 +175,13 @@ object TextResponse {
 
 class TextResponse(contentString: String, statusCode: Int = 200, statusLine: Option[String] = None) extends 
      HttpResponse(contentString, "text/plain", statusCode=statusCode, statusLine=statusLine)
+
+object JSONResponse { 
+  def apply(json: JValue) = new JSONResponse(json)
+}
+
+class JSONResponse(json: JValue, statusCode: Int = 200, statusLine: Option[String] = None) extends
+     HttpResponse(pretty(render(json)), "application/json", statusCode=statusCode, statusLine=statusLine)
 
 object BlobResponse { 
   def apply(req: HttpServletRequest, contentType: String, blobKey: BlobKey) = 

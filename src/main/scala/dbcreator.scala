@@ -227,11 +227,13 @@ object ExtractItems {
     val endings = List("", "e", "er", "n", "r", "t", "es", "s", "en", "et", "ens", "ets", 
                        "ers", "ed", "ede", "eders", "eder", "ene")
     val exactWords = List("tolde", "kat", "eg", "skrå", "lig", "hånd", "strå")
-    val errorneousWords = List("mus", "hvede", "lus", "ters", "hals", "bos", "ligger", 
-                               "løber", "lås", "plader", "krans", "line", "halv", "hæl", "hus", "hat", 
-                               "sten", "ben", "ret", "led", "skur", "is", "kar", "byg", "let", "kran", "ås")
+    val errorneousWords = List("mus", "hvede", "lus", "ters", "hals", "bos", "ligger", "kors", "aller", "ringe", 
+                               "løber", "lås", "plader", "krans", "line", "halv", "hæl", "hus", "hat", "grund", 
+                               "sten", "ben", "ret", "led", "skur", "is", "kar", "byg", "let", "kran", "ås",
+                               "grene", "råen", "nød", "top", "nøder", "kile", "bille", "skee", "skar", "spes", 
+                               "lur", "solen", "rine")
 
-    val synonyms = (Synonym query) map { 
+    val synonyms = ((Synonym query) toList) sortBy { _.word.length } map { 
       syn => 
         val word = (syn word) toLowerCase
         
@@ -339,26 +341,31 @@ object PictureExtractor {
   
   def extractPictures() { 
     val blobstoreService = BlobstoreServiceFactory getBlobstoreService
-      
-    SynonymGroup.query foreach { 
-      sg => 
-        val dir = findPicPath(sg path)
+    
+    val synonyms = (Synonym query) map { syn => (syn.word.toLowerCase.replaceAll(" ", ""), syn.getSynonymGroup) } toMap
+    
+    val paths = (SynonymGroup query)  map { sg => findPicPath(sg path) }
+    val sgWord = (SynonymGroup query) map { sg => (sg.canonicalWord -> sg) } toMap
+    val regex = "^[\\p{javaLowerCase}\\p{javaUpperCase}]+_([\\p{javaLowerCase}\\p{javaUpperCase}]+)_web.*\\.jpg$".r
 
-        var synonyms = Synonym get (sg synonyms) values
-      
-        val regex = "^[\\p{javaLowerCase}\\p{javaUpperCase}]+_([\\p{javaLowerCase}\\p{javaUpperCase}]+)_web.*\\.jpg$".r
-        (dir listFiles) foreach { 
-          f => f.getName match { 
-            case regex(word) => 
-              synonyms filter { syn => syn.word.toLowerCase.replaceAll(" ", "") == word.toLowerCase } match {
-                case synonym :: lst => 
-                  val url = getUploadUrl(host, port, "/blobs/uploadUrl")
-                  sendFile(host, port, url, f, "image/jpeg", Map("synonymGroupKey" -> sg.id.toString))
-                case _ => println("No synonym for: " + f.getName + " in  " + (sg path))
-              }
-            case _ => 
+    paths foreach { 
+      dir => (dir listFiles) foreach { 
+        f => f.getName match { 
+          case regex(word) => {
+            val lWord = word.toLowerCase
+            if (synonyms contains lWord) {
+              val url = getUploadUrl(host, port, "/blobs/uploadUrl")
+              sendFile(host, port, url, f, "image/jpeg", Map("synonymGroupKey" -> synonyms(lWord).id.toString))
+            } else if (sgWord contains lWord) {
+              val url = getUploadUrl(host, port, "/blobs/uploadUrl")
+              sendFile(host, port, url, f, "image/jpeg", Map("synonymGroupKey" -> sgWord(lWord).id.toString))
+            } else {
+              //println("Failed to find word: " + word + " " + f.getName)
+            }
           }
+          case _ =>
         }
+      }
     }
   }
 

@@ -51,22 +51,9 @@ class SimpleTest extends FunSuite with ShouldMatchers with BeforeAndAfterAll {
     
   test("Autocomplete query") { 
 
-    val res = reqTestBody("/ordbog/autocomplete/", "ord" -> List("kor"))
-    res should equal (List(
-      "kornet går op i kværnen",
-      "kornet hænger", 
-      "kornmølle", 
-      "kornmøllen", 
-      "kornsække", 
-      "korntilførsel", 
-      "korntønde", 
-      "kors", 
-      "korset", 
-      "korte krøjebjælke", 
-      "korte krøjebjælke", 
-      "korte krøjestiver", 
-      "korte stiver", 
-      "kortskaftet skovl") mkString "\n")
+    val res = reqTestBody("/ordbog/autocomplete/", "term" -> List("kor"))
+    res should equal (
+      """["kornet går op i kværnen","kornet hænger","kornmølle","kornmøllen","kornsække","korntilførsel","korntønde","kors","korset","korte krøjebjælke"]""")
   }
   
   test("Opslag template") { 

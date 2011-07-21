@@ -6,6 +6,9 @@ def css stylesheet
 def js file
  script (type="text/javascript" src={file})
 
+def jscript script
+ | <script type="text/javascript">$(function () {"{"} { e script } {"}"});</script>
+
 def metatag
  meta (http-equiv="Content-Type" content="text/html; charset=utf-8")
 
@@ -35,8 +38,10 @@ def main
    - metatag
    title | {title}
    - css {"/css/main.css"}
-   - js {"http://ajax.googleapis.com/ajax/libs/jquery/1.6.1/jquery.min.js"}
-   - js {"/js/main.js"}
+   - css {"http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.14/themes/base/jquery-ui.css"}
+   - js  {"http://ajax.googleapis.com/ajax/libs/jquery/1.6.1/jquery.min.js"}
+   - js  {"http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.14/jquery-ui.min.js"}
+   - js  {"/js/main.js"}
   body
    - header
    .container
@@ -59,21 +64,20 @@ def jslink body click={""} cls={""}
 def source name hidden
  + if hidden
   span.source
-   margin: 0px 4px; display: none;
+   margin-right: 4px; display: none;
    | {name} 
  + else
   span.source
-   margin: 0px 4px;
+   margin-right: 4px;
    | {name} 
   
 def synonyms synonyms
  #synonyms
-  border: 1px solid black; padding: 10px;
-  margin: 10px;
+  margin: 10px; 
   + for synonym in synonyms
    .word
     span 
-     font-weight: bold;
+     font-weight: bold; margin-right: 4px;
      | {synonym.word}
     + for source in synonym.sources
      - source {source} { for_loop_index_source > 3 }
@@ -84,12 +88,13 @@ def article synonym article
  - main 
   body: 
    #article
-    h1 | { synonym.word }
+    h1 
+     text-align: center;
+     | { synonym.word }
     #article-texts
      float: left; width: 500px;
      - synonyms {article.getSynonyms}
      #article-text
-      border: padding: 10px;
       margin: 10px;
       | {e article.text}
     #article-picture
@@ -97,3 +102,16 @@ def article synonym article
      + if article.pictureUrl
       img(src={article.pictureUrl})
    div(style="clear: both")
+
+def search seed={""}
+ - main
+  body: 
+   #searchfield
+    form(method="GET" action="/ordbog/opslag/")
+     input(type="text" name="ord" value={seed} id="soegefelt")
+     - jscript
+      script: 
+       | $("#soegefelt").autocomplete({"{"}'source': '/ordbog/autocomplete/'{"}"});
+       | $("#soegefelt").focus(function () {"{"} $(this).select(); {"}"});
+       | $("#soegefelt").focus();
+     input(type="submit" name="Søg" value="Søg")

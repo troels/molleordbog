@@ -14,12 +14,18 @@ import scala.collection.JavaConversions._
 import com.google.appengine.api.blobstore.BlobstoreServiceFactory
 import com.google.appengine.api.blobstore.BlobKey
 
+import net.liftweb.json.JsonDSL._
+
+import java.net.URLEncoder
+
 object Utils { 
   lazy val collator = Collator.getInstance(new Locale("da", "dk"))
 }
 
 object MolleOrdbogMappings extends BaseMapping {
   lazy val mappings: Mapping = 
+    (FrontpageMapping() ==> Views.search) |
+    ("soeg" ==> Views.search) |
     ("ordbog" / "autocomplete" ==> Views.autocomplete) | 
     ("ordbog" / "opslag" ==>  Views.lookup) |
     ("blobs" / (
@@ -57,7 +63,7 @@ object Views {
   def lookup: View = withArg("ord") { 
     (req, word) => 
       Synonym findSynonym word match {
-        case None => new RedirectResponse("/")
+        case None => new RedirectResponse("/?ord=" + (URLEncoder encode (word, "UTF-8")))
         case Some(syn) => TemplateResponse(
           "main.article", 
           "synonym" -> syn, 
@@ -65,12 +71,11 @@ object Views {
       }
   }
   
-  def autocomplete: View = withArg("ord") {
+  def autocomplete: View = withArg("term") {
     (req, word) => 
-      val synonyms = (Synonym findWithPrefix word toList) map (_ word) sortWith { (a, b) =>
-        Utils.collator.compare(a toLowerCase, b toLowerCase) == -1 } 
+      val synonyms = (Synonym findWithPrefix word toList) map (_ word) take 10
       
-      TextResponse(synonyms mkString "\n")
+      JSONResponse(synonyms)
   }
 
   def uploadUrl: View = {
@@ -83,6 +88,10 @@ object Views {
       val pictureUrl = (ImagesServiceFactory getImagesService) getServingUrl blobKey
 
       val sg = SynonymGroup get (java.lang.Long parseLong synonymGroupKey)
+      
+      if (sg.pictureKey != null) { 
+        blobstoreService delete new BlobKey(sg.pictureKey)
+      }
 
       sg.pictureKey = blobKey getKeyString
 
@@ -93,4 +102,9 @@ object Views {
   }
   
   def uploadDone: View = { _ => TextResponse("Upload complete") }
+
+  def search: View = { req => 
+    val ord = req getArg "ord" getOrElse ""  
+    TemplateResponse("main.search", "seed" -> ord)
+  }
 }
