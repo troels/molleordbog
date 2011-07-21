@@ -200,7 +200,10 @@ object ExtractItems {
                 
                 Model.obj.putMany(synonyms :_*)
                 
-                synonymGroup.text = ((contents groupText) mkString "\n")
+                synonymGroup.text = ((contents groupText) map { 
+                  text => "<p>" + escapeHtml(text) + "</p>"
+                }) mkString "\n"
+
                 synonymGroup.path = (
                   file.getPath replaceFirst ("^" + (Pattern quote (docFileDir getPath)) + "/*", "") replaceFirst
                   ("\\.doc$", ""))
@@ -225,7 +228,8 @@ object ExtractItems {
                        "ers", "ed", "ede", "eders", "eder", "ene")
     val exactWords = List("tolde", "kat", "eg", "skrå", "lig", "hånd", "strå")
     val errorneousWords = List("mus", "hvede", "lus", "ters", "hals", "bos", "ligger", 
-                               "løber", "lås", "plader", "krans", "line", "halv", "hæl", "hus", "hat")
+                               "løber", "lås", "plader", "krans", "line", "halv", "hæl", "hus", "hat", 
+                               "sten", "ben", "ret", "led", "skur", "is", "kar", "byg", "let", "kran", "ås")
 
     val synonyms = (Synonym query) map { 
       syn => 
@@ -350,9 +354,9 @@ object PictureExtractor {
                 case synonym :: lst => 
                   val url = getUploadUrl(host, port, "/blobs/uploadUrl")
                   sendFile(host, port, url, f, "image/jpeg", Map("synonymGroupKey" -> sg.id.toString))
-                case o => println("Failed finding: " + o)
+                case _ => println("No synonym for: " + f.getName + " in  " + (sg path))
               }
-            case _ =>
+            case _ => 
           }
         }
     }
