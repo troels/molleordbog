@@ -29,6 +29,12 @@ import org.apache.http.entity.mime.MultipartEntity
 import org.apache.http.impl.client.{DefaultHttpClient, BasicResponseHandler, DefaultRedirectStrategy}
 import org.apache.http.util.EntityUtils;
 import org.apache.http.entity.mime.content.{FileBody, StringBody}
+import org.apache.http.protocol.BasicHttpContext
+import org.apache.http.params.BasicHttpParams
+import org.apache.http.client.params.HttpClientParams
+import org.apache.http.impl.client.BasicCookieStore
+import org.apache.http.client.protocol.ClientContext
+
 import java.net.URLEncoder
 
 object OfficeHelpers { 
@@ -146,7 +152,7 @@ object ExtractItems {
   
   def collectWordsInDb() {
     val blobstoreService = BlobstoreServiceFactory getBlobstoreService
-
+    
     (SynonymGroup query) foreach { 
       sg => sg pictureKey match { 
         case null =>
@@ -167,7 +173,9 @@ object ExtractItems {
     val files: Iterable[File] = FileUtils.listFiles(
       docFileDir, FileFilterUtils.suffixFileFilter(".doc"), FileFilterUtils.trueFileFilter)
 
-    val syns: List[Synonym] = files flatMap { 
+    var sgId: Long = 1
+    var synId: Long = 1
+    val syns: List[BaseRow[_]] = files flatMap { 
       file => 
         (OfficeHelpers readDocFile file.getPath) map { 
           contents => (contents words) flatMap { 
@@ -179,7 +187,8 @@ object ExtractItems {
                 val synonymGroup = SynonymGroup()
                 synonymGroup.canonicalWord = word
                 synonymGroup.number = number
-                
+                synonymGroup.id = sgId
+                sgId += 1
                 val wordMap: HashMap[String, List[String]] = new HashMap
                 
                 _words foreach { 
@@ -194,11 +203,11 @@ object ExtractItems {
                     val syn = new Synonym
                     syn.word = k
                     syn.sources = v
+                    syn.id = synId
+                    synId += 1
                     syn
                   }
                 } toList
-                
-                Model.obj.putMany(synonyms :_*)
                 
                 synonymGroup.text = ((contents groupText) map { 
                   text => "<p>" + escapeHtml(text) + "</p>"
@@ -209,12 +218,11 @@ object ExtractItems {
                   ("\\.doc$", ""))
                 synonymGroup.synonyms = (synonyms map { _ getKey }) toList
                 
-                synonymGroup.save()
                 synonyms foreach {
                   s => s.synonymGroup = synonymGroup getKey
                 }
                 
-                synonyms
+                synonymGroup :: synonyms
               } else {
                 List[Synonym]()
               }
@@ -222,8 +230,8 @@ object ExtractItems {
       } getOrElse List[Synonym]()
     } toList
     
-    Model.obj.putMany(syns : _*)
-    
+    Model.obj.putMany(syns :_*)
+
     val endings = List("", "e", "er", "n", "r", "t", "es", "s", "en", "et", "ens", "ets", 
                        "ers", "ed", "ede", "eders", "eder", "ene")
     val exactWords = List("tolde", "kat", "eg", "skrå", "lig", "hånd", "strå")
@@ -231,9 +239,12 @@ object ExtractItems {
                                "løber", "lås", "plader", "krans", "line", "halv", "hæl", "hus", "hat", "grund", 
                                "sten", "ben", "ret", "led", "skur", "is", "kar", "byg", "let", "kran", "ås",
                                "grene", "råen", "nød", "top", "nøder", "kile", "bille", "skee", "skar", "spes", 
-                               "lur", "solen", "rine", "hvas", "alle")
+                               "lur", "solen", "rine", "hvas", "alle", "bøs", "to sten")
 
-    val synonyms = (((Synonym query) toList) sortBy { _.word.length } reverse )map { 
+    val synonyms = syns filter { _.isInstanceOf[Synonym] } map { _.asInstanceOf[Synonym] }
+    val synonymGroups = syns filter { _.isInstanceOf[SynonymGroup] } map { _.asInstanceOf[SynonymGroup] }
+
+    val synonymWords = (synonyms sortBy { _.word.length } reverse) map { 
       syn => 
         val word = (syn word) toLowerCase
         
@@ -247,7 +258,7 @@ object ExtractItems {
           (syn, new Regex("\\b" + (Pattern quote word.toLowerCase) +  "[\\p{javaLowerCase}\\p{javaUpperCase}]*\\b"))
         }
     } 
-    
+
     def overlaps(m0: MatchData, m1: MatchData): Boolean = 
       m0.start <= m1.start && m1.start < m0.end || m1.start <= m0.start && m0.start < m1.end
 
@@ -264,13 +275,12 @@ object ExtractItems {
           }
       }
     }
-          
-
-    val groups = (SynonymGroup.query) map { 
+      
+    val groups = synonymGroups map { 
       case sg => { 
         val text = (sg text) toLowerCase
 
-        val intervals = (synonyms flatMap { 
+        val intervals = (synonymWords flatMap { 
           case (synonym, regex) => 
             (regex findAllIn text matchData) map { 
               mtch => (synonym, mtch)} toList
@@ -278,7 +288,7 @@ object ExtractItems {
           _._2.start 
         } reverse
 
-        val resText =(intervals foldLeft (sg text)) { 
+        val resText = (intervals foldLeft (sg text)) { 
           (text, synmd) => synmd match {
             case (syn, md) => 
               if (syn.synonymGroup == sg.getKey) { 
@@ -337,22 +347,27 @@ object PictureExtractor {
   }
   
   def main(args: Array[String]) { 
-    RemoteHandler.withRemoteHandler { 
+    RemoteHandler.withRemoteHandler {
       extractPictures()
     }
   }
 
-  val host = "molleguiden.appspot.com"
-  val port = 80
+  val host = "localhost"
+  val port = 8080
   
   def extractPictures() { 
     val blobstoreService = BlobstoreServiceFactory getBlobstoreService
-    
-    val synonyms = (Synonym query) map { syn => (syn.word.toLowerCase.replaceAll(" ", ""), syn.getSynonymGroup) } toMap
 
     val sgs = (SynonymGroup query) toList
+    val sgsMap = sgs map { sg => sg.getKey -> sg } toMap
+
+    val synonyms = (Synonym query) map { 
+      syn => (syn.word.toLowerCase.replaceAll(" ", ""), sgsMap(syn.synonymGroup))
+    } toMap
+
     val paths = sgs map { sg => findPicPath(sg path) } distinct
     val sgWord = sgs map { sg => (sg.canonicalWord -> sg) } toMap
+
     val regex = "^[\\p{javaLowerCase}\\p{javaUpperCase}]+_([\\p{javaLowerCase}\\p{javaUpperCase}]+)_web.*\\.jpg$".r
 
     (paths distinct) foreach { 
@@ -376,12 +391,17 @@ object PictureExtractor {
     }
   }
 
-  lazy val client = new DefaultHttpClient()
+  def client = new DefaultHttpClient()
 
   def getUploadUrl(host: String, port: Int, url: String): String =  {
     val get = new HttpGet("http://%s:%d%s" format (host, port, url))
     
-    client.execute(get, new BasicResponseHandler)
+    val c = client
+    try {
+      c execute (get, new BasicResponseHandler)
+    } finally {
+      c.getConnectionManager.shutdown()
+    }
   }
   
   def sendFile(host: String, port: Int, url: String, file: File, 
@@ -404,10 +424,31 @@ object PictureExtractor {
     
     post setEntity multipart
     
-    try { 
-      client execute (post, new BasicResponseHandler)
-    } catch {
-      case e => println(e)
+    val context = new BasicHttpContext()
+
+    val cookieStore = new BasicCookieStore()
+    context.setAttribute(ClientContext.COOKIE_STORE, cookieStore)
+
+    val params = new BasicHttpParams
+    HttpClientParams.setRedirecting(params, true)
+    post.setParams(params)
+    
+    val c = client
+    try {
+      val resp = c execute (post, context)
+      val ent = resp.getEntity
+      if (ent != null) EntityUtils.consume(resp.getEntity)
+    } finally {
+      c.getConnectionManager.shutdown
     }
+  }
+}
+
+object VisualSearchParser { 
+  def readExcelFile(fileName: String) = new HSSFWorkbook(new FileInputStream(fileName))
+  val fileName = "/home/troels/src/molleordbog/data/udsnit.xls"
+  
+  def main(args: Array[String]) { 
+    println(readExcelFile("fileName"))
   }
 }

@@ -14,8 +14,6 @@ import scala.collection.JavaConversions._
 import com.google.appengine.api.blobstore.BlobstoreServiceFactory
 import com.google.appengine.api.blobstore.BlobKey
 
-import net.liftweb.json.JsonDSL._
-
 import java.net.URLEncoder
 
 object Utils { 

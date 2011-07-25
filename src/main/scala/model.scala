@@ -88,7 +88,6 @@ class SynonymGroup extends BaseRow[SynonymGroup] {
   var canonicalWord: String = _
   var path: String = _
   var synonyms: JList[Key[Synonym]] = _
-
   var pictureKey: String = _
   var pictureUrl: String = _
 
@@ -99,9 +98,20 @@ class SynonymGroup extends BaseRow[SynonymGroup] {
 
 }
 
+case class Subject(name: String, words: List[(Long, Long)])
+case class Excision(x: Int, y: Int, width: Int, height: Int, picture: Key[VisualSearchPicture])
+
+class VisualSearchPicture { 
+  @Id var pictureName: String = _
+
+  @Indexed var pictureKey: String = _
+  @Serialized var subjects: List[Subject] = _
+  @Serialized var excisions: List[Excision] = _
+} 
+
 object Model { 
   ObjectifyService.register(classOf[SynonymGroup])
   ObjectifyService.register(classOf[Synonym])
-  
-  lazy val obj = ObjectifyService begin
+  ObjectifyService.register(classOf[VisualSearchPicture])
+  def obj = ObjectifyService begin
 }
