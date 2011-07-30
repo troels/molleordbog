@@ -3,6 +3,7 @@ package org.bifrost.utils.mapping
 import org.bifrost.utils.http._
 import org.bifrost.utils.U._
 import scala.util.matching.Regex
+import java.util.regex.Pattern
 import Mapping._
 
 abstract class MapperElement { 
@@ -15,16 +16,19 @@ case class MapperString(str: String) extends MapperElement {
 }
 
 class RegexMapperElement(name: String, regex: Regex) extends MapperElement{
-  override def matchup(req: Request, uriPart: String) = 
+  override def matchup(req: Request, uriPart: String) =  {
     uriPart match { 
       case regex(part) => req.putRequestAttribute(name, part)
       case _ => None
     }
+  }
 }
 
-case class MapperSlug(name: String) extends RegexMapperElement(name, "^([\\w_-]+)$".r)
-case class MapperNumber(name: String) extends RegexMapperElement(name, "^(\\d+)$".r)
-
+case class MapperSlug(name: String) extends RegexMapperElement(name, "^([\\w_-]+)$" r)
+case class MapperNumber(name: String) extends RegexMapperElement(name, "^(\\d+)$" r)
+case class MapperList(name: String, elems: String*) extends RegexMapperElement(
+  name,  ('(' + (elems map { Pattern quote _ } mkString "|") + ')') r)
+                                                                               
 object Mapping { 
   type MappingResult = Option[(Request, Request => Response)]
 }
@@ -48,7 +52,6 @@ object FrontpageMapping {
 
 class FrontpageMapping()
 
-  
 class MappingPath(pathMatcher: List[MapperElement], action: Mapping) extends Mapping {
   private def findBestMatch(req: Request, uriParts: List[String], 
                             matcherParts: List[MapperElement]): Option[(Request, List[String])] = {

@@ -6,7 +6,7 @@ import org.bifrost.utils.U._
 import java.io.{ FileInputStream, File }
 import scala.util.matching.Regex
 import scala.util.matching.Regex.MatchData
-import org.apache.poi.ss.usermodel.Cell.{ CELL_TYPE_STRING, CELL_TYPE_NUMERIC }
+import org.apache.poi.ss.usermodel.Cell.{ CELL_TYPE_STRING, CELL_TYPE_NUMERIC, CELL_TYPE_BLANK }
 import org.apache.poi.hwpf.extractor.WordExtractor
 import org.apache.commons.io.FileUtils
 import org.apache.commons.io.filefilter.FileFilterUtils
@@ -35,24 +35,28 @@ import org.apache.http.client.params.HttpClientParams
 import org.apache.http.impl.client.BasicCookieStore
 import org.apache.http.client.protocol.ClientContext
 
+import com.googlecode.objectify.Key
 import java.net.URLEncoder
+import scala.math.round
 
-object OfficeHelpers { 
+trait ExcelHelper { 
   def readExcelFile(fileName: String) = new HSSFWorkbook(new FileInputStream(fileName))
-  
-  case class ParsedWord(source: String, wordNumber: Int, word: String) 
-  
-  val WordNrSourceRegex = "^(\\d*)[- ](.+)$".r
-  
+
   def readCellValue(cell: HSSFCell): String = {
-    if(cell == null) throw new Exception("Cell is null")
+    if(cell == null) return null
     cell getCellType match { 
       case CELL_TYPE_STRING => cell getStringCellValue
       case CELL_TYPE_NUMERIC => (cell getNumericCellValue) toString
+      case CELL_TYPE_BLANK => null
       case o => throw new Exception("Unknown type: %s" format (cell getCellType))
     }
   }
+}
 
+object OfficeHelpers extends ExcelHelper { 
+  case class ParsedWord(source: String, wordNumber: Int, word: String) 
+  
+  val WordNrSourceRegex = "^(\\d*)[- ](.+)$".r
   def readItemsXls(fileName: String) =  {
     val workbook = readExcelFile(fileName)
     val sheet = workbook getSheetAt 0 
@@ -89,11 +93,6 @@ object OfficeHelpers {
   
   case class DocFileOutput(groupName: String, words: List[(String, Int)], groupText: List[String]) 
 
-  def readDocFile(fileName: String) = {
-    val docFile = new WordExtractor(new FileInputStream(fileName))
-    findGroupName(docFile.getParagraphText toList)
-  }
-
   val groupNameRegex = "^\\s*Gruppenavn:\\s*(.*)$".r
   
   def findGroupName(paragraphs: List[String]): Option[DocFileOutput] =  {
@@ -107,6 +106,12 @@ object OfficeHelpers {
   
   val lookupwordLineRegex = "^\\s*Opslagsord.*?:(.*)$".r
   val wordRegex = "^(.*)\\s+(\\d+)\\s*".r
+
+  def readDocFile(fileName: String) = {
+    val docFile = new WordExtractor(new FileInputStream(fileName))
+    findGroupName(docFile.getParagraphText toList)
+  }
+  
   
   def findWords(groupName: String, rest: List[String]): Option[DocFileOutput] = { 
     val res = rest findFirst { 
@@ -311,7 +316,65 @@ object ExtractItems {
   }
 }
 
-object PictureExtractor { 
+trait FileUploader { 
+  val host = "localhost"
+  val port = 8080
+
+  def client = new DefaultHttpClient()
+
+  def getUploadUrl(host: String, port: Int, url: String): String =  {
+    val get = new HttpGet("http://%s:%d%s" format (host, port, url))
+    
+    val c = client
+    try {
+      c execute (get, new BasicResponseHandler)
+    } finally {
+      c.getConnectionManager.shutdown()
+    }
+  }
+  
+  def sendFile(host: String, port: Int, url: String, file: File, 
+               contentType: String, otherArgs: Map[String, String]) {
+    val post = 
+      if (url.startsWith("http://")) {
+        new HttpPost(url)
+      } else { 
+        new HttpPost("http://%s:%d%s" format (host, port, url))
+      }
+    
+    val multipart = new MultipartEntity()
+
+    val fileBody = new FileBody(file, contentType)
+    multipart.addPart("blob", fileBody)
+    
+    otherArgs foreach { 
+      case (k, v) => multipart.addPart(k, new StringBody(URLEncoder encode (v, "UTF-8")))
+    }
+    
+    post setEntity multipart
+    
+    val context = new BasicHttpContext()
+
+    val cookieStore = new BasicCookieStore()
+    context.setAttribute(ClientContext.COOKIE_STORE, cookieStore)
+
+    val params = new BasicHttpParams
+    HttpClientParams.setRedirecting(params, true)
+    post.setParams(params)
+    
+    val c = client
+    try {
+      val resp = c execute (post, context)
+      val ent = resp getEntity
+
+      if (ent != null) EntityUtils.consume(ent)
+    } finally {
+      c.getConnectionManager.shutdown
+    }
+  }
+}
+  
+object PictureExtractor extends FileUploader { 
   val picDir = new File("/home/troels/src/molleordbog/data/opslag_illustrationer")
   
   def substitutions = List(
@@ -351,13 +414,8 @@ object PictureExtractor {
       extractPictures()
     }
   }
-
-  val host = "localhost"
-  val port = 8080
   
   def extractPictures() { 
-    val blobstoreService = BlobstoreServiceFactory getBlobstoreService
-
     val sgs = (SynonymGroup query) toList
     val sgsMap = sgs map { sg => sg.getKey -> sg } toMap
 
@@ -390,65 +448,93 @@ object PictureExtractor {
       }
     }
   }
-
-  def client = new DefaultHttpClient()
-
-  def getUploadUrl(host: String, port: Int, url: String): String =  {
-    val get = new HttpGet("http://%s:%d%s" format (host, port, url))
-    
-    val c = client
-    try {
-      c execute (get, new BasicResponseHandler)
-    } finally {
-      c.getConnectionManager.shutdown()
-    }
-  }
-  
-  def sendFile(host: String, port: Int, url: String, file: File, 
-               contentType: String, otherArgs: Map[String, String]) {
-    val post = 
-      if (url.startsWith("http://")) {
-        new HttpPost(url)
-      } else { 
-        new HttpPost("http://%s:%d%s" format (host, port, url))
-      }
-    
-    val multipart = new MultipartEntity()
-
-    val fileBody = new FileBody(file, contentType)
-    multipart.addPart("blob", fileBody)
-    
-    otherArgs foreach { 
-      case (k, v) => multipart.addPart(k, new StringBody(v))
-    }
-    
-    post setEntity multipart
-    
-    val context = new BasicHttpContext()
-
-    val cookieStore = new BasicCookieStore()
-    context.setAttribute(ClientContext.COOKIE_STORE, cookieStore)
-
-    val params = new BasicHttpParams
-    HttpClientParams.setRedirecting(params, true)
-    post.setParams(params)
-    
-    val c = client
-    try {
-      val resp = c execute (post, context)
-      val ent = resp.getEntity
-      if (ent != null) EntityUtils.consume(resp.getEntity)
-    } finally {
-      c.getConnectionManager.shutdown
-    }
-  }
 }
 
-object VisualSearchParser { 
-  def readExcelFile(fileName: String) = new HSSFWorkbook(new FileInputStream(fileName))
+object VisualSearchParser extends ExcelHelper with FileUploader { 
   val fileName = "/home/troels/src/molleordbog/data/udsnit.xls"
-  
-  def main(args: Array[String]) { 
-    println(readExcelFile("fileName"))
+  val imageDir = "/home/troels/src/molleordbog/data/visuel"
+
+  def main(args: Array[String]) {   
+    RemoteHandler.withRemoteHandler {
+      doIt()
+    }
   }
+
+  def doIt() {
+    val workbook = readExcelFile(fileName)
+
+    val sheet = workbook getSheetAt 0 
+    
+    val rows = sheet getPhysicalNumberOfRows
+    
+    val fields = new HashMap[String, VisualSearchPicture]
+    Model.obj.delete(VisualSearchPicture query)
+    
+
+    (1 until rows) flatMap { rowNr => safelyNullable(sheet getRow rowNr) } foreach { 
+      row => 
+        val (pictureName, udsnitsId, xLeft, yUp, xRight, yDown, pointingAtPicture, subject, words) = 
+          (readCellValue(row getCell 0), readCellValue(row getCell 1), readCellValue(row getCell 2), 
+           readCellValue(row getCell 3), readCellValue(row getCell 4), readCellValue(row getCell 5), 
+           readCellValue(row getCell 6), readCellValue(row getCell 7), readCellValue(row getCell 8))
+
+        def parseWords(words: String): List[(Int, Int)] = {
+          if (words == null) return List()
+
+          words split "\\s+" map { word => 
+            if ((word indexOf "..") != -1) {
+              val words = word.split("\\.\\.") map { Integer parseInt _ }
+              (words(0) -> words(1))
+            } else {
+              val num = Integer parseInt word
+              (num -> num)
+            }
+          } toList
+        }
+
+      if (pictureName != null) { 
+        val vsp = fields getOrElseUpdate (pictureName, new VisualSearchPicture())
+
+        vsp.pictureName = pictureName
+        val wordList = parseWords(words)
+        
+        if (xLeft != null) { 
+          def convert(str: String): Int = round(java.lang.Float parseFloat str)
+        
+          val x = convert(xLeft); val y = convert(yUp)
+          val width = convert(xRight) - x; val height = convert(yDown) - y
+            
+          val key = if (pointingAtPicture != null) {
+            Some(new Key[VisualSearchPicture](classOf[VisualSearchPicture], pointingAtPicture))
+          } else { 
+            None
+          }
+            
+          val excision = new Excision(x, y, width, height, key, wordList)
+
+          vsp.excisions = (if(vsp.excisions == null) List(excision) else (excision :: (vsp.excisions toList))) toArray
+        } else if (subject != null) { 
+          val subj = Subject(subject, wordList)
+          vsp.subjects = (if (vsp.subjects == null) List(subj) else (subj :: (vsp.subjects toList))) toArray
+        }
+      }
+    }
+
+    Model.obj.putMany((fields values) toSeq: _*)
+    
+    FileUtils.listFiles(new File(imageDir), FileFilterUtils.suffixFileFilter(".jpg"),
+                        FileFilterUtils.trueFileFilter) foreach { 
+      file => {
+        val name = (file getName) replaceAll ("(\\.[jJ][Pp][Gg])+$", ".jpg")
+        
+        fields get name match {
+          case Some(vsp) => 
+            val url = getUploadUrl(host, port, "/blobs/uploadVisual")
+            sendFile(host, port, url, file, "image/jpeg", Map("key" -> (vsp pictureName)))
+          case None => 
+            println("Unknonwn name: " + name)
+        }
+      }
+    }
+ }
 }

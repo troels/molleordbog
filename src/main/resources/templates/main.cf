@@ -19,7 +19,7 @@ def header
    ul.submenu
     list-style: none; 
     + for menuitem in [{"url": "/soeg/", "name": "Søg"},
-                       {"url": "/ordbog/visuel/", "name": "Visuel Søgning"}]
+                       {"url": "/visuel/", "name": "Visuel Søgning"}]
      li.menu-item
       a (href={menuitem["url"]}) | { menuitem["name"] }
  br(clear="both")
@@ -37,10 +37,12 @@ def main
   head
    - metatag
    title | {title}
-   - css {"/css/main.css"}
    - css {"http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.14/themes/base/jquery-ui.css"}
+   - css {"/css/main.css"}
+
    - js  {"http://ajax.googleapis.com/ajax/libs/jquery/1.6.1/jquery.min.js"}
    - js  {"http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.14/jquery-ui.min.js"}
+   - js  {"/js/underscore-min.js"}
    - js  {"/js/main.js"}
   body
    - header
@@ -115,3 +117,30 @@ def search seed={""}
        | $("#soegefelt").focus(function () {"{"} $(this).select(); {"}"});
        | $("#soegefelt").focus();
      input(type="submit" name="Søg" value="Søg")
+
+def visualsearch
+ - main
+  body: 
+   + for data in [{"id": "hollander", 
+                   "picture": "/img/visual_frontpage/but_hollander01.jpg", 
+                   "hover_picture": "/img/visual_frontpage/but_hollander02.jpg"},
+                  {"id": "stubmolle", 
+                   "picture": "/img/visual_frontpage/but_stubmolle01.jpg", 
+                    "hover_picture": "/img/visual_frontpage/but_stubmolle02.jpg"
+                  },
+                  {"id": "vandmolle", 
+                   "picture": "/img/visual_frontpage/but_vandmolle01.jpg", 
+                   "hover_picture": "/img/visual_frontpage/but_vandmolle02.jpg"}]
+    img(src={data["picture"]} id={data["id"]})
+     cursor: pointer;
+     - jscript
+      script:
+       | var id = "{data["id"]}";
+       | $("#" + id).hover(function() {"{"} $("#" + id).attr('src', "{data["hover_picture"]}"); {"}"},
+       |                   function() {"{"} $("#" + id).attr('src', "{data["picture"]}"); {"}"});
+       | $("#" + id).click(function() {"{"} molle.gotoPage('/visuel/' + id); {"}"});
+
+def milltype milltype
+ - main
+  body: 
+   | whatever

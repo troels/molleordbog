@@ -14,7 +14,7 @@ import scala.collection.JavaConversions._
 import com.google.appengine.api.blobstore.BlobstoreServiceFactory
 import com.google.appengine.api.blobstore.BlobKey
 
-import java.net.URLEncoder
+import java.net.{URLEncoder, URLDecoder}
 
 object Utils { 
   lazy val collator = Collator.getInstance(new Locale("da", "dk"))
@@ -24,9 +24,13 @@ object MolleOrdbogMappings extends BaseMapping {
   lazy val mappings: Mapping = 
     (FrontpageMapping() ==> Views.search) |
     ("soeg" ==> Views.search) |
+    ("visuel" / MapperList("milltype", "vandmolle", "stubmolle", "hollander") ==> Views.millChoice) |
+    ("visuel" ==> Views.visualStart) |
     ("ordbog" / "autocomplete" ==> Views.autocomplete) | 
     ("ordbog" / "opslag" ==>  Views.lookup) |
     ("blobs" / (
+      ("uploadVisual" ==> Views.uploadVisualUrl) |
+      ("uploadVisualRedirect" ==> Views.uploadVisualRedirect) |
       ("getBlob" ==> Views.getBlob) |
       ("uploadUrl" ==> Views.uploadUrl) |
       ("uploadRedirect" ==> Views.uploadRedirect) |
@@ -75,13 +79,39 @@ object Views {
       
       JSONResponse(synonyms)
   }
-
+  
+  def uploadVisualUrl: View = {
+    _ => TextResponse(blobstoreService createUploadUrl "/blobs/uploadVisualRedirect/")
+  }
+    
   def uploadUrl: View = {
     _ => TextResponse(blobstoreService createUploadUrl "/blobs/uploadRedirect/")
   }
 
+  def uploadVisualRedirect: View = withArg("key") { 
+    (req, k) => {
+      val key = URLDecoder decode (k, "UTF-8")
+      val blobKey = (blobstoreService getUploadedBlobs (req.originalRequest get)) get "blob"
+      val url = (ImagesServiceFactory getImagesService) getServingUrl blobKey
+      val vsp = VisualSearchPicture get key
+      
+      if (vsp.pictureKey != null) {
+        blobstoreService delete new BlobKey(vsp.pictureKey)
+      }
+      
+      vsp.pictureKey = blobKey getKeyString
+
+      vsp.pictureUrl = url
+      
+      vsp.save()
+
+      RedirectResponse("/blobs/uploadDone/")
+    }
+  }
+
   def uploadRedirect: View = withArg("synonymGroupKey") {
-    (req, synonymGroupKey) => 
+    (req, key) => 
+      val synonymGroupKey = URLDecoder decode (key, "UTF-8")
       val blobKey = (blobstoreService getUploadedBlobs (req.originalRequest get)) get "blob"
       val pictureUrl = (ImagesServiceFactory getImagesService) getServingUrl blobKey
 
@@ -100,9 +130,16 @@ object Views {
   }
   
   def uploadDone: View = { _ => TextResponse("Upload complete") }
+  
+  def visualStart: View = { 
+    req => TemplateResponse("main.visualsearch")
+  }
 
-  def search: View = { req => 
-    val ord = req getArg "ord" getOrElse ""  
-    TemplateResponse("main.search", "seed" -> ord)
+  def millChoice: View = {
+    req => TemplateResponse("main.milltype", "milltype" -> (req getRequestAttribute "milltype"))
+  }
+
+  def search: View = { 
+    req => TemplateResponse("main.search", "seed" -> (req getArg "ord" getOrElse ""))
   }
 }

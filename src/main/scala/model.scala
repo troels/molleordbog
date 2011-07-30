@@ -63,6 +63,7 @@ class Synonym extends BaseRow[Synonym] {
   @Id var id: java.lang.Long = _
   @Indexed var word: String = _
   @Indexed var sources: JList[String] = _
+
   var synonymGroup: Key[SynonymGroup] = _
   var artificial: Boolean = _
   
@@ -82,6 +83,7 @@ object SynonymGroup extends BaseRowObj[SynonymGroup] {
 
 class SynonymGroup extends BaseRow[SynonymGroup] { 
   @Id var id: java.lang.Long = _
+
   @Indexed var number: java.lang.Long = _
 
   var text: String = _
@@ -94,24 +96,42 @@ class SynonymGroup extends BaseRow[SynonymGroup] {
   override def toString = "%d - %s" format (number, canonicalWord)
 
   def getSynonyms: List[Synonym] = 
-    if (synonyms != null) ((Synonym get synonyms) values) toList else List()
+    if (synonyms != null) (Synonym get synonyms values) toList else List()
 
 }
 
-case class Subject(name: String, words: List[(Long, Long)])
-case class Excision(x: Int, y: Int, width: Int, height: Int, picture: Key[VisualSearchPicture])
+case class Subject(name: String, words: List[(Int, Int)])
 
-class VisualSearchPicture { 
+case class Excision(x: Int, y: Int, width: Int, height: Int, picture: Option[Key[VisualSearchPicture]], 
+                    words: List[(Int, Int)])
+
+
+
+object VisualSearchPicture extends BaseRowObj[VisualSearchPicture] { 
+  def apply() = new VisualSearchPicture()
+}
+
+class VisualSearchPicture extends BaseRow[VisualSearchPicture] { 
   @Id var pictureName: String = _
-
-  @Indexed var pictureKey: String = _
-  @Serialized var subjects: List[Subject] = _
-  @Serialized var excisions: List[Excision] = _
+  
+  var pictureKey: String = _
+  var pictureUrl: String = _
+  
+  @Serialized var subjects: Array[Subject] = _
+  @Serialized var excisions: Array[Excision] = _
+  
+  override def toString: String = 
+    "%s - %s - %s" format (pictureName, 
+                           if (subjects != null) (subjects toList) else null,
+                           if (excisions != null) (excisions toList) else null)
+                                   
+    
 } 
 
 object Model { 
   ObjectifyService.register(classOf[SynonymGroup])
   ObjectifyService.register(classOf[Synonym])
   ObjectifyService.register(classOf[VisualSearchPicture])
+
   def obj = ObjectifyService begin
 }

@@ -6,7 +6,7 @@ import org.scalatest.matchers.ShouldMatchers
 import scala.collection.JavaConversions._
 
 import org.bifrost.molleordbog.dbcreator.ExtractItems
-import org.bifrost.molleordbog.model.{Synonym, Model, SynonymGroup}
+import org.bifrost.molleordbog.model.{Synonym, Model, SynonymGroup, Excision, Subject, VisualSearchPicture}
 import org.bifrost.utils.templates.OurCounterfeiter
 import org.bifrost.utils.U._
 import org.bifrost.utils.http.MockHttpRequest
@@ -15,6 +15,8 @@ import org.bifrost.molleordbog.RequestHandler
 
 import com.google.appengine.tools.development.testing.LocalDatastoreServiceTestConfig
 import com.google.appengine.tools.development.testing.LocalServiceTestHelper
+
+import java.io._
 
 class SimpleTest extends FunSuite with ShouldMatchers with BeforeAndAfterAll { 
   val helper = new LocalServiceTestHelper(new LocalDatastoreServiceTestConfig)
@@ -59,5 +61,26 @@ class SimpleTest extends FunSuite with ShouldMatchers with BeforeAndAfterAll {
   test("Opslag template") { 
     val res = reqTest("/ordbog/opslag/", "ord" -> List("kors"))
     res.statusCode should equal (200)
+  }
+}
+
+class SerializationTest extends FunSuite with ShouldMatchers with BeforeAndAfterAll { 
+  val helper = new LocalServiceTestHelper(new LocalDatastoreServiceTestConfig)
+
+  override def beforeAll { helper.setUp() }
+  override def afterAll { helper.tearDown() }
+
+  test("add object") { 
+    val pic = new VisualSearchPicture()
+    pic.pictureName = "hello"
+    pic.pictureKey = null
+
+    pic.subjects = List(Subject("hello", List())) toArray
+    
+    pic.excisions = List(Excision(0,0,0,0,None, List())) toArray
+
+    val key = pic.save()
+    
+    VisualSearchPicture.get(pic pictureName) 
   }
 }
