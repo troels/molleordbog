@@ -118,29 +118,46 @@ def search seed={""}
        | $("#soegefelt").focus();
      input(type="submit" name="Søg" value="Søg")
 
+def mill_list lst
+ + for data in lst
+  a(href={data["destination"]}) 
+   img(src={data["picture"]} id={data["id"]})
+    cursor: pointer;
+  - jscript
+   script:
+    | var id = "{data["id"]}";
+    | $("#" + id).hover(function() {"{"} $("#" + id).attr('src', "{data["hover_picture"]}"); {"}"},
+    |                   function() {"{"} $("#" + id).attr('src', "{data["picture"]}"); {"}"});
+
 def visualsearch
  - main
   body: 
-   + for data in [{"id": "hollander", 
-                   "picture": "/img/visual_frontpage/but_hollander01.jpg", 
-                   "hover_picture": "/img/visual_frontpage/but_hollander02.jpg"},
-                  {"id": "stubmolle", 
-                   "picture": "/img/visual_frontpage/but_stubmolle01.jpg", 
-                    "hover_picture": "/img/visual_frontpage/but_stubmolle02.jpg"
-                  },
-                  {"id": "vandmolle", 
-                   "picture": "/img/visual_frontpage/but_vandmolle01.jpg", 
-                   "hover_picture": "/img/visual_frontpage/but_vandmolle02.jpg"}]
-    img(src={data["picture"]} id={data["id"]})
-     cursor: pointer;
-     - jscript
-      script:
-       | var id = "{data["id"]}";
-       | $("#" + id).hover(function() {"{"} $("#" + id).attr('src', "{data["hover_picture"]}"); {"}"},
-       |                   function() {"{"} $("#" + id).attr('src', "{data["picture"]}"); {"}"});
-       | $("#" + id).click(function() {"{"} molle.gotoPage('/visuel/' + id); {"}"});
-
+   - mill_list {[{"id": "hollander", 
+                  "picture": "/img/visual_frontpage/but_hollander01.jpg", 
+                  "hover_picture": "/img/visual_frontpage/but_hollander02.jpg",
+                  "destination": "/visuel/hollander/"
+                 },
+                 {"id": "stubmolle", 
+                  "picture": "/img/visual_frontpage/but_stubmolle01.jpg", 
+                  "hover_picture": "/img/visual_frontpage/but_stubmolle02.jpg",
+                  "destination": "/visuel/stubmolle/"
+                 },
+                 {"id": "vandmolle", 
+                  "picture": "/img/visual_frontpage/but_vandmolle01.jpg", 
+                  "hover_picture": "/img/visual_frontpage/but_vandmolle02.jpg",
+                  "destination": "/visuel/vandmolle/"
+                  }]}
+ 
 def milltype milltype
  - main
   body: 
-   | whatever
+   - mill_list {[{ "id": milltype ++ "_ude",   
+                   "picture": "/img/visual_choice/" ++ milltype ++ "_ude01.jpg",
+                   "hover_picture": "/img/visual_choice/" ++ milltype ++ "_ude02.jpg",
+                   "destination": "/visuel/bladring/" ++ milltype ++ "_ude" },
+                 { "id": milltype ++ "_inde",   
+                   "picture": "/img/visual_choice/" ++ milltype ++ "_inde01.jpg",
+                   "hover_picture": "/img/visual_choice/" ++ milltype ++ "_inde02.jpg",
+                   "destination": "/visuel/bladring/" ++ milltype ++ "_inde" }]}
+                   
+

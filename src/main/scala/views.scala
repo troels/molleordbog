@@ -24,8 +24,12 @@ object MolleOrdbogMappings extends BaseMapping {
   lazy val mappings: Mapping = 
     (FrontpageMapping() ==> Views.search) |
     ("soeg" ==> Views.search) |
-    ("visuel" / MapperList("milltype", "vandmolle", "stubmolle", "hollander") ==> Views.millChoice) |
-    ("visuel" ==> Views.visualStart) |
+    ("visuel" / (
+      (FrontpageMapping() ==> Views.search) |
+      (MapperList("milltype", "vandmolle", "stubmolle", "hollander") ==> Views.millChoice) |
+      ("valg" / MapperList("milltype", 
+                           "vandmolle_inde", "vandmolle_ude", "stubmollde_inde", "stubmolle_ude",
+                           "hollander_inde", "hollander_ude") ==> Views.mill))) |
     ("ordbog" / "autocomplete" ==> Views.autocomplete) | 
     ("ordbog" / "opslag" ==>  Views.lookup) |
     ("blobs" / (
@@ -118,7 +122,7 @@ object Views {
       val sg = SynonymGroup get (java.lang.Long parseLong synonymGroupKey)
       
       if (sg.pictureKey != null) { 
-        blobstoreService delete new BlobKey(sg.pictureKey)
+        blobstoreService delete new BlobKey(sg pictureKey)
       }
 
       sg.pictureKey = blobKey getKeyString
@@ -136,7 +140,13 @@ object Views {
   }
 
   def millChoice: View = {
-    req => TemplateResponse("main.milltype", "milltype" -> (req getRequestAttribute "milltype"))
+    req => TemplateResponse("main.milltype", "milltype" -> (req getRequestAttribute "milltype" get))
+  }
+
+  def mill: View = {
+    req => {
+      
+    }
   }
 
   def search: View = { 
