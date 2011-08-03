@@ -59,6 +59,7 @@ object Synonym extends BaseRowObj[Synonym] {
   def apply(): Synonym = new Synonym
 }
 
+@Cached
 class Synonym extends BaseRow[Synonym] {
   @Id var id: java.lang.Long = _
   @Indexed var word: String = _
@@ -81,6 +82,7 @@ object SynonymGroup extends BaseRowObj[SynonymGroup] {
   def apply(): SynonymGroup = new SynonymGroup
 }
 
+@Cached
 class SynonymGroup extends BaseRow[SynonymGroup] { 
   @Id var id: java.lang.Long = _
 
@@ -88,8 +90,10 @@ class SynonymGroup extends BaseRow[SynonymGroup] {
 
   var text: String = _
   var canonicalWord: String = _
+
   var path: String = _
   var synonyms: JList[Key[Synonym]] = _
+
   var pictureKey: String = _
   var pictureUrl: String = _
 
@@ -100,23 +104,23 @@ class SynonymGroup extends BaseRow[SynonymGroup] {
 
 }
 
-case class Subject(name: String, words: List[(Int, Int)])
-
-case class Excision(x: Int, y: Int, width: Int, height: Int, picture: Option[Key[VisualSearchPicture]], 
-                    words: List[(Int, Int)])
-
+case class Subject(name: String, words: List[Key[SynonymGroup]])
+case class Excision(x: Int, y: Int, width: Int, height: Int, picture: Key[VisualSearchPicture])
 
 
 object VisualSearchPicture extends BaseRowObj[VisualSearchPicture] { 
   def apply() = new VisualSearchPicture()
 }
 
+@Cached
 class VisualSearchPicture extends BaseRow[VisualSearchPicture] { 
   @Id var pictureName: String = _
   
   var pictureKey: String = _
   var pictureUrl: String = _
   
+  var words: JList[Key[SynonymGroup]] = _
+
   @Serialized var subjects: Array[Subject] = _
   @Serialized var excisions: Array[Excision] = _
   

@@ -25,11 +25,11 @@ object MolleOrdbogMappings extends BaseMapping {
     (FrontpageMapping() ==> Views.search) |
     ("soeg" ==> Views.search) |
     ("visuel" / (
-      (FrontpageMapping() ==> Views.search) |
-      (MapperList("milltype", "vandmolle", "stubmolle", "hollander") ==> Views.millChoice) |
-      ("valg" / MapperList("milltype", 
-                           "vandmolle_inde", "vandmolle_ude", "stubmollde_inde", "stubmolle_ude",
-                           "hollander_inde", "hollander_ude") ==> Views.mill))) |
+      (FrontpageMapping() ==> Views.visualStart) |
+      ("browse" / MapperWord("picture") ==> Views.millPart) |
+      ("moller" / MapperList("milltype", "vandmolle", "stubmolle", "hollander") / 
+       ((FrontpageMapping() ==> Views.millChoice) | 
+        (MapperList("inout", "inde", "ude") ==> Views.millPart))))) |
     ("ordbog" / "autocomplete" ==> Views.autocomplete) | 
     ("ordbog" / "opslag" ==>  Views.lookup) |
     ("blobs" / (
@@ -143,12 +143,46 @@ object Views {
     req => TemplateResponse("main.milltype", "milltype" -> (req getRequestAttribute "milltype" get))
   }
 
-  def mill: View = {
+  val millConverter = Map("hollander" -> "holl", 
+                          "stubmolle" -> "stubmølle",
+                          "vandmolle" -> "vandmølle")
+                          
+  def getVsp(req: Request): VisualSearchPicture = {
+    VisualSearchPicture get (
+      req getRequestAttribute "picture" map { 
+        pic => URLDecoder decode (pic.asInstanceOf[String], "UTF-8")
+      } getOrElse {
+        val milltype = req getRequestAttribute "milltype" map { str => millConverter(str.asInstanceOf[String]) } get
+        val inout = req getRequestAttribute "inout" get
+
+        "%s_%s.jpg" format (milltype, inout)
+      } get
+    )
+  }
+    
+  
+  case class StudiedSubject(name: String, subjects: List[SynonymGroup])
+
+  def millPart: View = {
     req => {
+      val vsp = getVsp(req)
+      val wordsAsync = if (vsp.words != null) Model.obj.async get(vsp words) else null
+      val subjects = vsp subjects
+
+      val studiedSubjects = if (subjects != null) { 
+        subjects map { case Subject(name, keys) => (name, Model.obj.async get(keys)) } map { 
+          case (name, vsps) => StudiedSubject(name, ((vsps get) values) toList)
+        }
+      } else null
+          
+
+      val words = if (wordsAsync != null) ((wordsAsync get) values) toList else null
       
+      TemplateResponse(if (req isAjax) "main.millbrowser_ajax" else  "main.millbrowser", 
+                       "vsp" -> vsp, "words" -> words, "subjects" -> studiedSubjects)
     }
   }
-
+  
   def search: View = { 
     req => TemplateResponse("main.search", "seed" -> (req getArg "ord" getOrElse ""))
   }

@@ -24,6 +24,7 @@ class RegexMapperElement(name: String, regex: Regex) extends MapperElement{
   }
 }
 
+case class MapperWord(name: String) extends RegexMapperElement(name, "^(.*)$" r)
 case class MapperSlug(name: String) extends RegexMapperElement(name, "^([\\w_-]+)$" r)
 case class MapperNumber(name: String) extends RegexMapperElement(name, "^(\\d+)$" r)
 case class MapperList(name: String, elems: String*) extends RegexMapperElement(

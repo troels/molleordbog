@@ -6,6 +6,16 @@
    version="2.5">
   <display-name>Mølleordbog</display-name>
 
+  <filter>
+    <filter-name>AsyncCacheFilter</filter-name>
+    <filter-class>com.googlecode.objectify.cache.AsyncCacheFilter</filter-class>
+  </filter>
+
+  <filter-mapping>
+    <filter-name>AsyncCacheFilter</filter-name>
+    <url-pattern>/*</url-pattern>
+  </filter-mapping>
+
   <servlet>
     <display-name>Remote API Servlet</display-name>
     <servlet-name>RemoteApiServlet</servlet-name>

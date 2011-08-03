@@ -13,7 +13,7 @@ object OurCounterfeiter {
   
   def renderTemplate(name: String, lst: List[ElementaryExpression] = List(), 
                      map: Map[String, ElementaryExpression] = Map()) = 
-     "<!doctype html>\n%s\n" format machine.renderTemplate(name, lst, map)
+     "%s\n" format machine.renderTemplate(name, lst, map)
 }
 
 

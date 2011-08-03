@@ -43,6 +43,9 @@ abstract class Request {
   def putRequestAttribute(key: String, value: AnyRef): Request
   
   def originalRequest: Option[HttpServletRequest] = None
+
+  def isAjax: Boolean = 
+    getHeader("X-Requested-With") map { _.toLowerCase == "xmlhttprequest" } getOrElse false 
 }
 
 abstract class Response {
@@ -163,7 +166,7 @@ object HtmlResponse {
 }
 
 class HtmlResponse(contentString: String, statusCode: Int= 200, statusLine: Option[String] = None) extends 
-     HttpResponse(contentString, "text/html", statusCode = statusCode, statusLine = statusLine)
+     HttpResponse(contentString, "text/html; charset=UTF-8", statusCode = statusCode, statusLine = statusLine)
 
 object TextResponse { 
   def apply(contentString: String) = 
@@ -198,5 +201,3 @@ class BlobResponse(req: HttpServletRequest, contentType: String, blobKey: BlobKe
     blobstoreService serve (blobKey, byteRange, resp)
   }
 }
-
-class A(b: Int)

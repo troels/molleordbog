@@ -152,6 +152,7 @@ object ExtractItems {
     RemoteHandler.withRemoteHandler { 
       collectWordsInDb()
       PictureExtractor.extractPictures()
+      VisualSearchParser.doIt()
     }
   }
   
@@ -491,32 +492,39 @@ object VisualSearchParser extends ExcelHelper with FileUploader {
             }
           } toList
         }
-
+      
+      def findSynonymGroups(wordList: List[(Int, Int)]): List[Key[SynonymGroup]]  = {
+        wordList map { case (lower, upper) => (SynonymGroup query) filter ( 
+          "number >= ", lower) filter ("number <= ", upper) fetchKeys 
+        } flatMap { iter => iter }
+      }
+      
       if (pictureName != null) { 
         val vsp = fields getOrElseUpdate (pictureName, new VisualSearchPicture())
 
         vsp.pictureName = pictureName
         val wordList = parseWords(words)
         
-        if (xLeft != null) { 
+        if (wordList nonEmpty) {
+          val groups = findSynonymGroups(wordList)
+
+          if (subject == null) { 
+            vsp.words = groups
+          } else {
+            val subj = Subject(subject, groups)
+            vsp.subjects = (if (vsp.subjects == null) List(subj) else (subj :: (vsp.subjects toList))) toArray
+          }
+        } else if (xLeft != null) { 
           def convert(str: String): Int = round(java.lang.Float parseFloat str)
         
           val x = convert(xLeft); val y = convert(yUp)
           val width = convert(xRight) - x; val height = convert(yDown) - y
             
-          val key = if (pointingAtPicture != null) {
-            Some(new Key[VisualSearchPicture](classOf[VisualSearchPicture], pointingAtPicture))
-          } else { 
-            None
-          }
-            
-          val excision = new Excision(x, y, width, height, key, wordList)
+          val key = new Key[VisualSearchPicture](classOf[VisualSearchPicture], pointingAtPicture)
+          val excision = new Excision(x, y, width, height, key)
 
           vsp.excisions = (if(vsp.excisions == null) List(excision) else (excision :: (vsp.excisions toList))) toArray
-        } else if (subject != null) { 
-          val subj = Subject(subject, wordList)
-          vsp.subjects = (if (vsp.subjects == null) List(subj) else (subj :: (vsp.subjects toList))) toArray
-        }
+        } 
       }
     }
 
@@ -532,7 +540,7 @@ object VisualSearchParser extends ExcelHelper with FileUploader {
             val url = getUploadUrl(host, port, "/blobs/uploadVisual")
             sendFile(host, port, url, file, "image/jpeg", Map("key" -> (vsp pictureName)))
           case None => 
-            println("Unknonwn name: " + name)
+            println("Unknown name: " + name)
         }
       }
     }

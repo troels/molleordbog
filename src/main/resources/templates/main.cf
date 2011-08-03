@@ -33,6 +33,7 @@ def footer
 def main
  title: | Mølleordbog
  body:
+ | <!doctype html>
  html 
   head
    - metatag
@@ -135,17 +136,17 @@ def visualsearch
    - mill_list {[{"id": "hollander", 
                   "picture": "/img/visual_frontpage/but_hollander01.jpg", 
                   "hover_picture": "/img/visual_frontpage/but_hollander02.jpg",
-                  "destination": "/visuel/hollander/"
+                  "destination": "/visuel/moller/hollander/"
                  },
                  {"id": "stubmolle", 
                   "picture": "/img/visual_frontpage/but_stubmolle01.jpg", 
                   "hover_picture": "/img/visual_frontpage/but_stubmolle02.jpg",
-                  "destination": "/visuel/stubmolle/"
+                  "destination": "/visuel/moller/stubmolle/"
                  },
                  {"id": "vandmolle", 
                   "picture": "/img/visual_frontpage/but_vandmolle01.jpg", 
                   "hover_picture": "/img/visual_frontpage/but_vandmolle02.jpg",
-                  "destination": "/visuel/vandmolle/"
+                  "destination": "/visuel/moller/vandmolle/"
                   }]}
  
 def milltype milltype
@@ -154,10 +155,52 @@ def milltype milltype
    - mill_list {[{ "id": milltype ++ "_ude",   
                    "picture": "/img/visual_choice/" ++ milltype ++ "_ude01.jpg",
                    "hover_picture": "/img/visual_choice/" ++ milltype ++ "_ude02.jpg",
-                   "destination": "/visuel/bladring/" ++ milltype ++ "_ude" },
-                 { "id": milltype ++ "_inde",   
+                   "destination": "/visuel/moller/" ++ milltype ++ "/ude/" },
+                 { "id": milltype ++ "_inde",
                    "picture": "/img/visual_choice/" ++ milltype ++ "_inde01.jpg",
                    "hover_picture": "/img/visual_choice/" ++ milltype ++ "_inde02.jpg",
-                   "destination": "/visuel/bladring/" ++ milltype ++ "_inde" }]}
-                   
+                   "destination": "/visuel/moller/" ++ milltype ++ "/inde/" }]}
 
+def show_subjects subjects
+ + let id = guid
+  div(id={id})
+   float: left; width: 300px;
+   + for subject in subjects
+    h3 a(href="#") | { subject.name } 
+    .subject 
+     - show_words { subject.subjects }
+   - jscript
+    script:
+     | $("#{id}").accordion({"{"} autoHeight: false,
+     | collapsible: true,  {"}"});
+
+def show_words words
+ ul + for word in words
+  li a(href={"/ordbog/opslag/?ord=" ++ word.canonicalWord}) | { word.canonicalWord } 
+
+def millbrowser_ajax vsp words subjects
+ + let imgid = guid
+  #imgcontainer
+   float: left;
+   img(src={vsp.pictureUrl} id={imgid})
+  #subjectcontainer
+   - show_subjects {subjects}
+  + if words
+   - show_words {words}
+  - clear
+  - jscript
+   script:
+    | var excisionHolder = molle.makeExcisionHolder("{imgid}");
+    + if vsp.excisions
+     + for excision in vsp.excisions
+      | excisionHolder.addExcision({excision.x}, {excision.y}, {excision.width}, {excision.height}, 
+      |                            "{"/visuel/browse/" ++ excision.picture.getName ++ "/"}");
+                       
+def millbrowser vsp words subjects
+ - main 
+  body: 
+   - millbrowser_ajax {vsp} {words} {subjects}
+
+def clear
+ div
+  clear: both;
