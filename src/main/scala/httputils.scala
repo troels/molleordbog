@@ -74,7 +74,7 @@ abstract class Response {
 
 class HttpRequest(request: HttpServletRequest, requestAttributes: Map[String, AnyRef] = Map()) extends Request {
   override def getHeaders(key: String) = (request getHeaders key).asInstanceOf[java.util.Enumeration[String]]
-  override def getHeader(key: String) = request getHeader key
+  override def getHeader(key: String) = safelyNullable(request getHeader key)
 
   override def method = HttpMethod fromString (request getMethod) get
   override def uri = request getRequestURI
@@ -94,7 +94,7 @@ class HttpRequest(request: HttpServletRequest, requestAttributes: Map[String, An
 
   lazy val session = request getSession
   
-  override def getSessionAttribute(key: String) = session getAttribute key
+  override def getSessionAttribute(key: String) = safelyNullable(session getAttribute key)
   override def putSessionAttribute(key: String, value: AnyRef) = session.setAttribute(key, value)
   
   override def getRequestAttribute(key: String) = requestAttributes get key
@@ -158,7 +158,7 @@ class RequestErrorResponse(statusLine: Option[String] = None) extends HttpRespon
   contentString = statusLine getOrElse RequestErrorResponse.defaultError, 
   contentType = "text/plain",  
   statusCode = 400,
-  statusLine = statusLine orElse RequestErrorResponse.defaultError)
+  statusLine = statusLine orElse safelyNullable(RequestErrorResponse.defaultError))
 
 object HtmlResponse { 
   def apply(str: String, statusCode: Int = 200, statusLine: Option[String] = None) = 

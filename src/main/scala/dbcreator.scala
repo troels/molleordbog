@@ -115,12 +115,11 @@ object OfficeHelpers extends ExcelHelper {
   
   def findWords(groupName: String, rest: List[String]): Option[DocFileOutput] = { 
     val res = rest findFirst { 
-      case lookupwordLineRegex(words) => {
-        (words split "," toList) map (_.trim) flatMap { 
+      case lookupwordLineRegex(words) => 
+        Some((words split "," toList) map (_.trim) flatMap { 
           case wordRegex(word, number) => Some((word, Integer parseInt number))
           case o => None
-        }
-      }
+        })
       case _ => None
     }
 
@@ -151,8 +150,6 @@ object ExtractItems {
   def main(args: Array[String]) { 
     RemoteHandler.withRemoteHandler { 
       collectWordsInDb()
-      PictureExtractor.extractPictures()
-      VisualSearchParser.doIt()
     }
   }
   
@@ -245,7 +242,7 @@ object ExtractItems {
                                "løber", "lås", "plader", "krans", "line", "halv", "hæl", "hus", "hat", "grund", 
                                "sten", "ben", "ret", "led", "skur", "is", "kar", "byg", "let", "kran", "ås",
                                "grene", "råen", "nød", "top", "nøder", "kile", "bille", "skee", "skar", "spes", 
-                               "lur", "solen", "rine", "hvas", "alle", "bøs", "to sten")
+                               "lur", "solen", "rine", "hvas", "alle", "bøs", "to sten", "fyr", "skaled")
 
     val synonyms = syns filter { _.isInstanceOf[Synonym] } map { _.asInstanceOf[Synonym] }
     val synonymGroups = syns filter { _.isInstanceOf[SynonymGroup] } map { _.asInstanceOf[SynonymGroup] }
@@ -256,7 +253,7 @@ object ExtractItems {
         
         if (exactWords contains word) { 
           (syn, new Regex("\\b" + (Pattern quote word) + "\\b"))
-        } else if (errorneousWords contains word) { 
+        } else if ((errorneousWords contains word) || (word length) <= 4 ) { 
           (syn, new Regex("\\b" + (Pattern quote word) + "(" + (endings map { Pattern quote _ }  mkString "|") + ")\\b"))
         } else {
           val ending = endings filter { syn.word.endsWith(_) } sortBy { _.length } reverse
@@ -380,7 +377,7 @@ object PictureExtractor extends FileUploader {
   
   def substitutions = List(
     ("timber construction" -> "tinberconstruction"),
-    ("securingthewing" -> "secure the wing"),
+    ("securingthewing" -> "securethewing"),
     ("fourpiecewing" -> "fourpiecewings"),
     ("sailmaterials" -> "sail materials"),
     ("sailproofing" -> "sail proofing"),
@@ -420,12 +417,11 @@ object PictureExtractor extends FileUploader {
     val sgs = (SynonymGroup query) toList
     val sgsMap = sgs map { sg => sg.getKey -> sg } toMap
 
-    val synonyms = (Synonym query) map { 
-      syn => (syn.word.toLowerCase.replaceAll(" ", ""), sgsMap(syn.synonymGroup))
-    } toMap
+    val synonyms = ((Synonym query) map { 
+      syn => (syn.word.toLowerCase.replaceAll("\\s+", ""), sgsMap(syn.synonymGroup))
+    }) ++ (sgs map { sg => (sg canonicalWord).replaceAll("\\s+", "") -> sgsMap(sg.getKey) }) toMap
 
     val paths = sgs map { sg => findPicPath(sg path) } distinct
-    val sgWord = sgs map { sg => (sg.canonicalWord -> sg) } toMap
 
     val regex = "^[\\p{javaLowerCase}\\p{javaUpperCase}]+_([\\p{javaLowerCase}\\p{javaUpperCase}]+)_web.*\\.jpg$".r
 
@@ -437,14 +433,11 @@ object PictureExtractor extends FileUploader {
             if (synonyms contains lWord) {
               val url = getUploadUrl(host, port, "/blobs/uploadUrl")
               sendFile(host, port, url, f, "image/jpeg", Map("synonymGroupKey" -> synonyms(lWord).id.toString))
-            } else if (sgWord contains lWord) {
-              val url = getUploadUrl(host, port, "/blobs/uploadUrl")
-              sendFile(host, port, url, f, "image/jpeg", Map("synonymGroupKey" -> sgWord(lWord).id.toString))
             } else {
               println("Failed to find word: " + word + " " + f.getName)
             }
           }
-          case _ =>
+          case o => println("Failed to handle: " + o)
         }
       }
     }
@@ -511,8 +504,15 @@ object VisualSearchParser extends ExcelHelper with FileUploader {
           if (subject == null) { 
             vsp.words = groups
           } else {
-            val subj = Subject(subject, groups)
-            vsp.subjects = (if (vsp.subjects == null) List(subj) else (subj :: (vsp.subjects toList))) toArray
+            val subj = Subject(subject, groups toArray)
+            
+            vsp.subjects = if (vsp.subjects == null) List(subj) toArray else {
+              if (!(vsp.subjects exists { s => s.name == subject })) {
+                (subj :: (vsp.subjects toList)) toArray
+              } else {
+                vsp.subjects
+              }
+            }
           }
         } else if (xLeft != null) { 
           def convert(str: String): Int = round(java.lang.Float parseFloat str)

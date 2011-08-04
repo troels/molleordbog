@@ -18,7 +18,7 @@ object U {
   def gson = new GsonBuilder().registerTypeHierarchyAdapter(classOf[List[_]], SerializeList).create()
 
   
-  implicit def safelyNullable[A](v: A): Option[A] = v match { 
+  def safelyNullable[A](v: A): Option[A] = v match { 
     case null => None 
     case o => Some(o)
   }

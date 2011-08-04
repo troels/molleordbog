@@ -12,13 +12,13 @@ abstract class MapperElement {
 
 case class MapperString(str: String) extends MapperElement {
   override def matchup(req: Request, uriPart: String): Option[Request] = 
-    if (uriPart == str) req else None
+    if (uriPart == str) Some(req) else None
 }
 
 class RegexMapperElement(name: String, regex: Regex) extends MapperElement{
   override def matchup(req: Request, uriPart: String) =  {
     uriPart match { 
-      case regex(part) => req.putRequestAttribute(name, part)
+      case regex(part) => safelyNullable(req.putRequestAttribute(name, part))
       case _ => None
     }
   }
@@ -56,7 +56,7 @@ class FrontpageMapping()
 class MappingPath(pathMatcher: List[MapperElement], action: Mapping) extends Mapping {
   private def findBestMatch(req: Request, uriParts: List[String], 
                             matcherParts: List[MapperElement]): Option[(Request, List[String])] = {
-    if (matcherParts isEmpty) return (req, uriParts)
+    if (matcherParts isEmpty) return Some((req, uriParts))
     if (uriParts isEmpty) return None
     
     val uriHead :: uriRest = uriParts
@@ -81,7 +81,7 @@ class MappingSwitch(matchers: Mapping*) extends Mapping {
 
 class MappingAction(func: Request => Response) extends Mapping {
   override def apply(req: Request, uriParts: List[String]) = 
-    if (uriParts isEmpty) (req, func) else None
+    if (uriParts isEmpty) Some((req, func)) else None
 }
 
 class MappingPathGenerator(path: List[MapperElement]) { 

@@ -1,10 +1,9 @@
 body {
 	font: 100%/1.4 Verdana, Arial, Helvetica, sans-serif;
-	background: #42413C;
+  background: url("/img/body_bg.jpg") repeat-x scroll left top #FFFFFF;
 	margin: 0;
 	padding: 0;
 	color: #000;
-	background-color: #FFF;
 }
 
 ul, ol, dl {
@@ -35,7 +34,8 @@ a:hover, a:active, a:focus {
     display: inline;
     cursor: pointer;
     width: 190px;
-    background-color: #C3B68C;
+    background-color: #CBB078;
+/*    background-color: #C3B68C; */
     text-align: center;
     border-left: 1px solid white;
     float: left;

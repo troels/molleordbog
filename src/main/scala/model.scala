@@ -11,17 +11,17 @@ import scala.collection.JavaConversions._
 import org.bifrost.utils.U._
 import Implicits._
 
+object Implicits { 
+  implicit def objectify2enhancer(ob: Objectify): ObjectifyEnhancer = new ObjectifyEnhancer(ob)
+}
+
 
 class ObjectifyEnhancer(ob: Objectify) { 
   def putOne[T](obj: T): Key[T] = (ob put (Seq(obj) : _*)).keySet.iterator.next
   def putMany[T](objs: BaseRow[T]*) = ob put (objs: _*)
 
-  def getOne[T](cls: Class[T], id: Long): Option[T] = ob get (cls, Seq(id) : _*) get id
+  def getOne[T](cls: Class[T], id: Long): Option[T] = safelyNullable(ob get (cls, Seq(id) : _*) get id)
   def getMany[T](cls: Class[T], objs: Long*): Map[Long, T] = new JMapWrapper((ob get (cls, objs: _*))) toMap
-}
-
-object Implicits { 
-  implicit def objectify2enhancer(ob: Objectify) = new ObjectifyEnhancer(ob)
 }
 
 abstract class BaseRowObj[T](implicit m: Manifest[T]) {
@@ -70,7 +70,7 @@ class Synonym extends BaseRow[Synonym] {
   
   override def toString = "%s - %s" format (word, sources mkString ", ")
 
-  def getSynonymGroup: SynonymGroup = SynonymGroup get synonymGroup 
+  def getSynonymGroup: SynonymGroup = SynonymGroup get synonymGroup
 }
 
 object SynonymGroup extends BaseRowObj[SynonymGroup] {
@@ -104,7 +104,7 @@ class SynonymGroup extends BaseRow[SynonymGroup] {
 
 }
 
-case class Subject(name: String, words: List[Key[SynonymGroup]])
+case class Subject(name: String, words: Array[Key[SynonymGroup]])
 case class Excision(x: Int, y: Int, width: Int, height: Int, picture: Key[VisualSearchPicture])
 
 
@@ -119,8 +119,10 @@ class VisualSearchPicture extends BaseRow[VisualSearchPicture] {
   var pictureKey: String = _
   var pictureUrl: String = _
   
+  var width: Int = -1
+  var height: Int = -1
   var words: JList[Key[SynonymGroup]] = _
-
+  
   @Serialized var subjects: Array[Subject] = _
   @Serialized var excisions: Array[Excision] = _
   

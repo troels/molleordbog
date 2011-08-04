@@ -32,6 +32,7 @@ object MolleOrdbogMappings extends BaseMapping {
         (MapperList("inout", "inde", "ude") ==> Views.millPart))))) |
     ("ordbog" / "autocomplete" ==> Views.autocomplete) | 
     ("ordbog" / "opslag" ==>  Views.lookup) |
+    ("ordbog" / "nummer" ==>  Views.lookupSynonymgroup) |
     ("blobs" / (
       ("uploadVisual" ==> Views.uploadVisualUrl) |
       ("uploadVisualRedirect" ==> Views.uploadVisualRedirect) |
@@ -50,14 +51,14 @@ object Views {
     req getArg arg map { 
       argVal => f(req, argVal)
     } getOrElse {
-      RequestErrorResponse("Missing argument: %s" format arg)
+      RequestErrorResponse(Some("Missing argument: %s" format arg))
     }
   
   def withArg(arg0: String, arg1: String)(f: (Request, String, String) => Response)(req: Request): Response =
     req getArg arg0 map { 
       argVal0 => withArg(arg1)( (req, argVal1) => f(req, argVal0, argVal1) )(req) 
     } getOrElse {
-      RequestErrorResponse("Missing argument: %s" format arg0)
+      RequestErrorResponse(Some("Missing argument: %s" format arg0))
     }
   
       
@@ -77,6 +78,17 @@ object Views {
       }
   }
   
+  def lookupSynonymgroup: View = withArg("nummer") { 
+    (req, number) => 
+      val sg = SynonymGroup get (java.lang.Long parseLong number)
+    
+    TemplateResponse(
+      "main.article", 
+      "synonym" -> (Synonym get sg.synonyms.get(0)),
+      "article" -> sg
+    )
+  }
+
   def autocomplete: View = withArg("term") {
     (req, word) => 
       val synonyms = (Synonym findWithPrefix word toList) map (_ word) take 10
@@ -105,6 +117,22 @@ object Views {
       
       vsp.pictureKey = blobKey getKeyString
 
+      println(blobKey)
+      val img = try {
+        ImagesServiceFactory makeImageFromBlob blobKey
+      } catch {
+        case e=> {
+          println("Faield with blobkey; " + blobKey)
+          throw e
+        }
+      }
+        
+      val newImg = (ImagesServiceFactory getImagesService) applyTransform (
+        ImagesServiceFactory makeCrop (0, 0, 1, 1), img)
+      
+      vsp.width = (newImg getWidth)
+      vsp.height = (newImg getHeight)
+      
       vsp.pictureUrl = url
       
       vsp.save()
@@ -156,7 +184,7 @@ object Views {
         val inout = req getRequestAttribute "inout" get
 
         "%s_%s.jpg" format (milltype, inout)
-      } get
+      }
     )
   }
     
@@ -170,7 +198,7 @@ object Views {
       val subjects = vsp subjects
 
       val studiedSubjects = if (subjects != null) { 
-        subjects map { case Subject(name, keys) => (name, Model.obj.async get(keys)) } map { 
+        subjects map { case Subject(name, keys) => (name, Model.obj.async get(keys toSeq)) } map { 
           case (name, vsps) => StudiedSubject(name, ((vsps get) values) toList)
         }
       } else null

@@ -164,7 +164,8 @@ def milltype milltype
 def show_subjects subjects
  + let id = guid
   div(id={id})
-   float: left; width: 300px;
+   float: left; width: 270px;
+   margin-top: 50px;
    + for subject in subjects
     h3 a(href="#") | { subject.name } 
     .subject 
@@ -172,17 +173,21 @@ def show_subjects subjects
    - jscript
     script:
      | $("#{id}").accordion({"{"} autoHeight: false,
-     | collapsible: true,  {"}"});
+     | collapsible: true {"}"});
 
 def show_words words
  ul + for word in words
-  li a(href={"/ordbog/opslag/?ord=" ++ word.canonicalWord}) | { word.canonicalWord } 
+  li 
+   list-style-type: none; margin-top: 5px; margin-bottom: 5px;
+   a(href={"/ordbog/nummer/?nummer=" ++ word.id}) | { word.canonicalWord } 
 
 def millbrowser_ajax vsp words subjects
  + let imgid = guid
   #imgcontainer
+   margin: 35px;
+   width: 600px; height: 600px;
    float: left;
-   img(src={vsp.pictureUrl} id={imgid})
+   img(src={vsp.pictureUrl ++ "=s600"} id={imgid})
   #subjectcontainer
    - show_subjects {subjects}
   + if words
@@ -193,7 +198,10 @@ def millbrowser_ajax vsp words subjects
     | var excisionHolder = molle.makeExcisionHolder("{imgid}");
     + if vsp.excisions
      + for excision in vsp.excisions
-      | excisionHolder.addExcision({excision.x}, {excision.y}, {excision.width}, {excision.height}, 
+      | excisionHolder.addExcision( { excision.x } * $("#{imgid}").width() / { vsp.width } , 
+      |                             { excision.y } * $("#{imgid}").height() / { vsp.height } , 
+      |                             { excision.width } * $("#{imgid}").width() / { vsp.width } , 
+      |                             { excision.height } * $("#{imgid}").height() / { vsp.height }, 
       |                            "{"/visuel/browse/" ++ excision.picture.getName ++ "/"}");
                        
 def millbrowser vsp words subjects
