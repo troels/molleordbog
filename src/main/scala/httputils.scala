@@ -184,18 +184,25 @@ class JSONResponse(json: AnyRef, statusCode: Int = 200, statusLine: Option[Strin
      HttpResponse(gson toJson json , "application/json", statusCode=statusCode, statusLine=statusLine)
 
 object BlobResponse { 
-  def apply(req: HttpServletRequest, contentType: String, blobKey: BlobKey) = 
-    new BlobResponse(req, contentType, blobKey)
+  def apply(req: HttpServletRequest, contentType: String, blobKey: BlobKey, fileName: Option[String] = None) = 
+    new BlobResponse(req, contentType, blobKey, fileName)
 }
 
-class BlobResponse(req: HttpServletRequest, contentType: String, blobKey: BlobKey) extends 
-      HttpResponse("", contentType) {
- 
+class BlobResponse(req: HttpServletRequest, contentType: String, blobKey: BlobKey, fileName: Option[String]=None) 
+extends HttpResponse("", contentType) {
+  def asciify(str: String): String = 
+    str.replaceAll("ø", "oe").replaceAll("Ø", "OE").replaceAll("Æ", "AE").replaceAll("å", "aa")
+       .replaceAll("Å", "AA").replaceAll("æ", "ae")
+  
+  override def headers = super.headers ++ (
+    fileName map { fn => ("Content-Disposition" -> ("attachment; filename=%s" format (asciify(fn)))) } toList
+  )
+  
   override def toServletResponse(resp: HttpServletResponse) {
-    
     resp.setStatus(statusCode)
+    
     outputHeaders(resp)
-
+    
     val blobstoreService = BlobstoreServiceFactory getBlobstoreService
     val byteRange = blobstoreService getByteRange req
     blobstoreService serve (blobKey, byteRange, resp)

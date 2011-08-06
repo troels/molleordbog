@@ -61,7 +61,7 @@
      ExcisionHolder.prototype = {
          addExcision: function (x, y, width, height, destination) {
              function opacitySetter(opacity) {
-                 return function (opacity) {
+                 return function () {
                      $(this).children("div").fadeTo(0, opacity);
                  };
              }

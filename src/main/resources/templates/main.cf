@@ -47,7 +47,7 @@ def main
    - js  {"/js/main.js"}
   body
    - header
-   .container
+   .container .main-container
     | {body}
    - footer
 
@@ -110,11 +110,13 @@ def search seed={""}
  - main
   body: 
    #searchfield
-    form(method="GET" action="/ordbog/opslag/")
+    form(method="GET" action="/ordbog/opslag/" id="soegeform")
      input(type="text" name="ord" value={seed} id="soegefelt")
      - jscript
       script: 
-       | $("#soegefelt").autocomplete({"{"}'source': '/ordbog/autocomplete/'{"}"});
+       | $("#soegefelt").autocomplete({"{"}'source': '/ordbog/autocomplete/',
+       |                                   'select': function () {"{"} $("#soegeform").submit(); {"}"}
+       | {"}"});
        | $("#soegefelt").focus(function () {"{"} $(this).select(); {"}"});
        | $("#soegefelt").focus();
      input(type="submit" name="Søg" value="Søg")
@@ -214,12 +216,13 @@ def millbrowser vsp words subjects
 def all_sources sources
  - main 
   body:
-   ul
     + for source in sources
-     li.source-element
-      | { source.name }
+     div.source-element
+      margin: 10px 0;
+      | { source.name } 
+      a(href={ "/blobs/getBlob/?blob=" ++ u source.pictureKey }) | Download pdf
+              
      
 def clear
  div
   clear: both;
-

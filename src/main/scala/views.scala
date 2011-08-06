@@ -11,8 +11,7 @@ import java.util.Locale
 import com.google.appengine.api.images.ImagesServiceFactory
 
 import scala.collection.JavaConversions._
-import com.google.appengine.api.blobstore.BlobstoreServiceFactory
-import com.google.appengine.api.blobstore.BlobKey
+import com.google.appengine.api.blobstore.{ BlobstoreServiceFactory, BlobKey, BlobInfoFactory }
 
 import java.net.{URLEncoder, URLDecoder}
 
@@ -66,8 +65,13 @@ object Views {
   
       
   def getBlob: View = withArg("blob") { 
-    (req, blobKey) => 
-      BlobResponse((req originalRequest) get, "image/jpeg", new BlobKey(blobKey))
+    (req, protoBlobKey) => 
+      val blobKey  = new BlobKey(protoBlobKey)
+      val blobInfo = (new BlobInfoFactory() loadBlobInfo blobKey)
+      val mimeType = (blobInfo getContentType)
+      val fileName = (blobInfo getFilename)
+
+      BlobResponse((req originalRequest) get, mimeType, blobKey, Some(fileName))
   }
 
   def lookup: View = withArg("ord") { 
@@ -211,7 +215,7 @@ object Views {
       val subjects = vsp subjects
 
       val studiedSubjects = if (subjects != null) { 
-        subjects map { case Subject(name, keys) => (name, Model.obj.async get(keys toSeq)) } map { 
+        subjects map { case Subject(name, keys) => (name, Model.obj.async get (keys toSeq)) } map { 
           case (name, vsps) => StudiedSubject(name, ((vsps get) values) toList)
         }
       } else null
@@ -230,8 +234,6 @@ object Views {
 
   def allSources: View = { 
     req => 
-      val sources = (Source query) toList
-
-      TemplateResponse("main.all_sources", "sources" -> sources)
+      TemplateResponse("main.all_sources", "sources" -> (Source.query toList))
   }
 }

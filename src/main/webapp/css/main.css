@@ -52,10 +52,15 @@ a:hover, a:active, a:focus {
     color: #333333;
 }
 
+.main-container { 
+  margin: 1px 30px;
+  width: 100%;
+}
+ 
 .container {
 	width: 960px;
-	background: #FFF;
-	margin: 0 auto;
+  background: #FFF;
+  margin: 0 auto;
 }
 
 .header {

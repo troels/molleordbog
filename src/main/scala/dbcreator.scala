@@ -258,12 +258,12 @@ object ExtractItems extends BaseImporter {
         
         if (exactWords contains word) { 
           (syn, new Regex("\\b" + (Pattern quote word) + "\\b"))
-        // } else if ((errorneousWords contains word) || (word length) <= 4 ) { 
-        //   (syn, new Regex("\\b" + (Pattern quote word) + "(" + (endings map { Pattern quote _ }  mkString "|") + ")\\b"))
+        } else if ((errorneousWords contains word) || (word length) <= 4 ) { 
+          (syn, new Regex("\\b" + (Pattern quote word) + "("+ (endings map { Pattern quote _ }  mkString "|") + ")\\b"))
         } else {
           val ending = endings filter { syn.word.endsWith(_) } sortBy { _.length } reverse
           val word = if (ending isEmpty) syn.word else syn.word.substring(0, syn.word.length - ending(0).length)
-          (syn, new Regex("\\b" + (Pattern quote word.toLowerCase) +  "[\\p{javaLowerCase}\\p{javaUpperCase}]*\\b"))
+          (syn, new Regex("\\b" + (Pattern quote word) + "(" + (endings map { Pattern quote _ } mkString "|") + ")\\b"))
         }
     } 
 
