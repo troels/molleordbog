@@ -34,12 +34,15 @@ object MolleOrdbogMappings extends BaseMapping {
     ("ordbog" / "opslag" ==>  Views.lookup) |
     ("ordbog" / "nummer" ==>  Views.lookupSynonymgroup) |
     ("blobs" / (
+      ("getBlob" ==> Views.getBlob) |
       ("uploadVisual" ==> Views.uploadVisualUrl) |
       ("uploadVisualRedirect" ==> Views.uploadVisualRedirect) |
-      ("getBlob" ==> Views.getBlob) |
+      ("uploadSource" ==> Views.uploadSourceUrl) | 
+      ("sourceRedirect" ==> Views.uploadSourceRedirect) | 
       ("uploadUrl" ==> Views.uploadUrl) |
       ("uploadRedirect" ==> Views.uploadRedirect) |
-      ("uploadDone" ==> Views.uploadDone)))
+      ("uploadDone" ==> Views.uploadDone))) |
+   ("kilder" / "oversigt" ==> Views.allSources)
 }
 
 
@@ -104,26 +107,21 @@ object Views {
     _ => TextResponse(blobstoreService createUploadUrl "/blobs/uploadRedirect/")
   }
 
-  def uploadVisualRedirect: View = withArg("key") { 
-    (req, k) => {
-      val key = URLDecoder decode (k, "UTF-8")
-      val blobKey = (blobstoreService getUploadedBlobs (req.originalRequest get)) get "blob"
-      val url = (ImagesServiceFactory getImagesService) getServingUrl blobKey
-      val vsp = VisualSearchPicture get key
-      
-      if (vsp.pictureKey != null) {
-        blobstoreService delete new BlobKey(vsp.pictureKey)
-      }
-      
-      vsp.pictureKey = blobKey getKeyString
+  def uploadSourceUrl: View = {
+    _ => TextResponse(blobstoreService createUploadUrl "/blobs/sourceRedirect/")
+  }
 
-      println(blobKey)
-      val img = try {
-        ImagesServiceFactory makeImageFromBlob blobKey
-      } catch {
-        case e=> {
-          println("Faield with blobkey; " + blobKey)
-          throw e
+  val uploadVisualRedirect: View = 
+    genericUploadRedirect("key", {
+      k => VisualSearchPicture get k
+    }, Some({
+      (vsp: VisualSearchPicture, blobKey: BlobKey) => {
+        val img = try {
+          ImagesServiceFactory makeImageFromBlob blobKey
+        } catch {
+          case e=> {
+            println("Failed with blobkey; " + blobKey)
+            throw e
         }
       }
         
@@ -132,35 +130,50 @@ object Views {
       
       vsp.width = (newImg getWidth)
       vsp.height = (newImg getHeight)
-      
-      vsp.pictureUrl = url
-      
-      vsp.save()
 
+      val url = (ImagesServiceFactory getImagesService) getServingUrl blobKey
+      vsp.pictureUrl = url
+        
+      }
+    }))
+  
+  type TakesUpload = { 
+    var pictureKey: String
+    
+    def save(): BaseRow[_]
+  }
+    
+  def genericUploadRedirect[T <: TakesUpload](argName: String, getObj: String => T, 
+                                              beforeSave: Option[(T, BlobKey) => Unit] = None) : View = withArg(argName) { 
+    (req, protoKey) =>  {
+      val key = URLDecoder decode (protoKey, "UTF-8")
+      val blobKey = (blobstoreService getUploadedBlobs (req.originalRequest get)) get "blob"
+      
+      val obj = getObj(key)
+      
+      if (obj.pictureKey != null) {
+        blobstoreService delete new BlobKey(obj pictureKey)
+      }
+      
+      obj.pictureKey = blobKey getKeyString
+      
+      beforeSave map { bs => bs(obj, blobKey) } 
+
+      obj.save()
       RedirectResponse("/blobs/uploadDone/")
     }
   }
 
-  def uploadRedirect: View = withArg("synonymGroupKey") {
-    (req, key) => 
-      val synonymGroupKey = URLDecoder decode (key, "UTF-8")
-      val blobKey = (blobstoreService getUploadedBlobs (req.originalRequest get)) get "blob"
+  val uploadRedirect: View = genericUploadRedirect("synonymGroupKey", { 
+    k => SynonymGroup get (java.lang.Long parseLong k) } , Some({
+    (obj: SynonymGroup, blobKey: BlobKey) => 
       val pictureUrl = (ImagesServiceFactory getImagesService) getServingUrl blobKey
-
-      val sg = SynonymGroup get (java.lang.Long parseLong synonymGroupKey)
-      
-      if (sg.pictureKey != null) { 
-        blobstoreService delete new BlobKey(sg pictureKey)
-      }
-
-      sg.pictureKey = blobKey getKeyString
-
-      sg.pictureUrl = pictureUrl
-      
-      sg.save()
-      RedirectResponse("/blobs/uploadDone/")
-  }
+      obj.pictureUrl = pictureUrl
+    }))
   
+  val uploadSourceRedirect: View = genericUploadRedirect("source", {
+    k => Source get (java.lang.Long parseLong k) })
+
   def uploadDone: View = { _ => TextResponse("Upload complete") }
   
   def visualStart: View = { 
@@ -213,5 +226,12 @@ object Views {
   
   def search: View = { 
     req => TemplateResponse("main.search", "seed" -> (req getArg "ord" getOrElse ""))
+  }
+
+  def allSources: View = { 
+    req => 
+      val sources = (Source query) toList
+
+      TemplateResponse("main.all_sources", "sources" -> sources)
   }
 }

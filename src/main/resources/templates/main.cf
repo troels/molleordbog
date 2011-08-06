@@ -121,14 +121,16 @@ def search seed={""}
 
 def mill_list lst
  + for data in lst
-  a(href={data["destination"]}) 
+  a(href={data["destination"]} onclick={"$(this).attr($(\"#\" + id).attr('src', '" ++ data["picture"] ++ "');"}) 
    img(src={data["picture"]} id={data["id"]})
     cursor: pointer;
   - jscript
    script:
     | var id = "{data["id"]}";
     | $("#" + id).hover(function() {"{"} $("#" + id).attr('src', "{data["hover_picture"]}"); {"}"},
-    |                   function() {"{"} $("#" + id).attr('src', "{data["picture"]}"); {"}"});
+    |                   function() {"{"} $("#" + id).attr('src', "{data["picture"]}"); {"}"})
+    |            .mouseover(function() {"{"} $("#" + id).attr('src', "{data["hover_picture"]}"); {"}"});
+
 
 def visualsearch
  - main
@@ -173,7 +175,7 @@ def show_subjects subjects
    - jscript
     script:
      | $("#{id}").accordion({"{"} autoHeight: false,
-     | collapsible: true {"}"});
+     | collapsible: true, active: false {"}"});
 
 def show_words words
  ul + for word in words
@@ -209,6 +211,15 @@ def millbrowser vsp words subjects
   body: 
    - millbrowser_ajax {vsp} {words} {subjects}
 
+def all_sources sources
+ - main 
+  body:
+   ul
+    + for source in sources
+     li.source-element
+      | { source.name }
+     
 def clear
  div
   clear: both;
+

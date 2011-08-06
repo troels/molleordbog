@@ -51,7 +51,8 @@ abstract class BaseRow[T](implicit m: Manifest[T]) {
 object Synonym extends BaseRowObj[Synonym] { 
   def findWithPrefix(prefix: String): Query[Synonym] =
     (query filter ("word >= ", prefix + "\u0000") 
-           filter ("word <= ", prefix + "\uffff"))
+           filter ("word <= ", prefix + "\uffff") 
+           limit 50)
   
   def findSynonym(word: String): Option[Synonym] = 
     (query filter ("word = ", word) toList) headOption
@@ -59,9 +60,9 @@ object Synonym extends BaseRowObj[Synonym] {
   def apply(): Synonym = new Synonym
 }
 
-@Cached
 class Synonym extends BaseRow[Synonym] {
   @Id var id: java.lang.Long = _
+
   @Indexed var word: String = _
   @Indexed var sources: JList[String] = _
 
@@ -82,7 +83,6 @@ object SynonymGroup extends BaseRowObj[SynonymGroup] {
   def apply(): SynonymGroup = new SynonymGroup
 }
 
-@Cached
 class SynonymGroup extends BaseRow[SynonymGroup] { 
   @Id var id: java.lang.Long = _
 
@@ -107,12 +107,10 @@ class SynonymGroup extends BaseRow[SynonymGroup] {
 case class Subject(name: String, words: Array[Key[SynonymGroup]])
 case class Excision(x: Int, y: Int, width: Int, height: Int, picture: Key[VisualSearchPicture])
 
-
 object VisualSearchPicture extends BaseRowObj[VisualSearchPicture] { 
   def apply() = new VisualSearchPicture()
 }
 
-@Cached
 class VisualSearchPicture extends BaseRow[VisualSearchPicture] { 
   @Id var pictureName: String = _
   
@@ -130,14 +128,27 @@ class VisualSearchPicture extends BaseRow[VisualSearchPicture] {
     "%s - %s - %s" format (pictureName, 
                            if (subjects != null) (subjects toList) else null,
                            if (excisions != null) (excisions toList) else null)
-                                   
-    
 } 
+
+object Source extends BaseRowObj[Source] { 
+  def apply() = new Source()
+}
+
+class Source extends BaseRow[Source] { 
+  @Id var id: java.lang.Long = _
+    
+  var name: String = _
+
+  var pictureKey: String = _
+}
 
 object Model { 
   ObjectifyService.register(classOf[SynonymGroup])
   ObjectifyService.register(classOf[Synonym])
   ObjectifyService.register(classOf[VisualSearchPicture])
+  ObjectifyService.register(classOf[Source])
+  
+  var isImport: Boolean = false
 
-  def obj = ObjectifyService begin
+  def obj = ObjectifyService begin (new ObjectifyOpts().setGlobalCache(isImport))
 }

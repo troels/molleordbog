@@ -39,6 +39,10 @@ import com.googlecode.objectify.Key
 import java.net.URLEncoder
 import scala.math.round
 
+trait BaseImporter { 
+  Model.isImport = true
+}
+
 trait ExcelHelper { 
   def readExcelFile(fileName: String) = new HSSFWorkbook(new FileInputStream(fileName))
 
@@ -141,7 +145,7 @@ object OfficeHelpers extends ExcelHelper {
   }
 }
 
-object ExtractItems {
+object ExtractItems extends BaseImporter {
   import OfficeHelpers.{ParsedWord, DocFileOutput }
 
   val fileName = "/home/troels/src/molleordbog/data/wordlist.xls"
@@ -154,14 +158,14 @@ object ExtractItems {
   }
   
   def collectWordsInDb() {
-    val blobstoreService = BlobstoreServiceFactory getBlobstoreService
+    // val blobstoreService = BlobstoreServiceFactory getBlobstoreService
     
-    (SynonymGroup query) foreach { 
-      sg => sg pictureKey match { 
-        case null =>
-        case key => blobstoreService delete (new BlobKey(key))
-      }
-    }
+    // (SynonymGroup query) foreach { 
+    //   sg => sg pictureKey match { 
+    //     case null =>
+    //     case key => blobstoreService delete (new BlobKey(key))
+    //   }
+    // }
 
     Model.obj.delete(SynonymGroup query)
     Model.obj.delete(Synonym query)
@@ -242,7 +246,8 @@ object ExtractItems {
                                "løber", "lås", "plader", "krans", "line", "halv", "hæl", "hus", "hat", "grund", 
                                "sten", "ben", "ret", "led", "skur", "is", "kar", "byg", "let", "kran", "ås",
                                "grene", "råen", "nød", "top", "nøder", "kile", "bille", "skee", "skar", "spes", 
-                               "lur", "solen", "rine", "hvas", "alle", "bøs", "to sten", "fyr", "skaled")
+                               "kappe", "lur", "solen", "rine", "hvas", "alle", "bøs", "to sten", "fyr", "skaled", 
+                               "koben")
 
     val synonyms = syns filter { _.isInstanceOf[Synonym] } map { _.asInstanceOf[Synonym] }
     val synonymGroups = syns filter { _.isInstanceOf[SynonymGroup] } map { _.asInstanceOf[SynonymGroup] }
@@ -253,8 +258,8 @@ object ExtractItems {
         
         if (exactWords contains word) { 
           (syn, new Regex("\\b" + (Pattern quote word) + "\\b"))
-        } else if ((errorneousWords contains word) || (word length) <= 4 ) { 
-          (syn, new Regex("\\b" + (Pattern quote word) + "(" + (endings map { Pattern quote _ }  mkString "|") + ")\\b"))
+        // } else if ((errorneousWords contains word) || (word length) <= 4 ) { 
+        //   (syn, new Regex("\\b" + (Pattern quote word) + "(" + (endings map { Pattern quote _ }  mkString "|") + ")\\b"))
         } else {
           val ending = endings filter { syn.word.endsWith(_) } sortBy { _.length } reverse
           val word = if (ending isEmpty) syn.word else syn.word.substring(0, syn.word.length - ending(0).length)
@@ -320,19 +325,23 @@ trait FileUploader {
 
   def client = new DefaultHttpClient()
 
-  def getUploadUrl(host: String, port: Int, url: String): String =  {
+  def getUploadUrl(url: String): String =  {
     val get = new HttpGet("http://%s:%d%s" format (host, port, url))
     
     val c = client
     try {
       c execute (get, new BasicResponseHandler)
+    } catch {
+      case e => {
+        println(e)
+        getUploadUrl(url)
+      }
     } finally {
       c.getConnectionManager.shutdown()
     }
   }
   
-  def sendFile(host: String, port: Int, url: String, file: File, 
-               contentType: String, otherArgs: Map[String, String]) {
+  def sendFile(url: String, file: File, contentType: String, otherArgs: Map[String, String]) {
     val post = 
       if (url.startsWith("http://")) {
         new HttpPost(url)
@@ -366,13 +375,15 @@ trait FileUploader {
       val ent = resp getEntity
 
       if (ent != null) EntityUtils.consume(ent)
+    } catch {
+      case e => {println(e); throw e; }
     } finally {
       c.getConnectionManager.shutdown
     }
   }
 }
   
-object PictureExtractor extends FileUploader { 
+object PictureExtractor extends FileUploader with BaseImporter { 
   val picDir = new File("/home/troels/src/molleordbog/data/opslag_illustrationer")
   
   def substitutions = List(
@@ -431,8 +442,8 @@ object PictureExtractor extends FileUploader {
           case regex(word) => {
             val lWord = word.toLowerCase
             if (synonyms contains lWord) {
-              val url = getUploadUrl(host, port, "/blobs/uploadUrl")
-              sendFile(host, port, url, f, "image/jpeg", Map("synonymGroupKey" -> synonyms(lWord).id.toString))
+              val url = getUploadUrl("/blobs/uploadUrl")
+              sendFile(url, f, "image/jpeg", Map("synonymGroupKey" -> synonyms(lWord).id.toString))
             } else {
               println("Failed to find word: " + word + " " + f.getName)
             }
@@ -444,7 +455,7 @@ object PictureExtractor extends FileUploader {
   }
 }
 
-object VisualSearchParser extends ExcelHelper with FileUploader { 
+object VisualSearchParser extends ExcelHelper with FileUploader with BaseImporter { 
   val fileName = "/home/troels/src/molleordbog/data/udsnit.xls"
   val imageDir = "/home/troels/src/molleordbog/data/visuel"
 
@@ -537,8 +548,8 @@ object VisualSearchParser extends ExcelHelper with FileUploader {
         
         fields get name match {
           case Some(vsp) => 
-            val url = getUploadUrl(host, port, "/blobs/uploadVisual")
-            sendFile(host, port, url, file, "image/jpeg", Map("key" -> (vsp pictureName)))
+            val url = getUploadUrl("/blobs/uploadVisual")
+            sendFile(url, file, "image/jpeg", Map("key" -> (vsp pictureName)))
           case None => 
             println("Unknown name: " + name)
         }
@@ -546,3 +557,50 @@ object VisualSearchParser extends ExcelHelper with FileUploader {
     }
  }
 }
+
+
+object ReadSourceData extends FileUploader with BaseImporter { 
+  val pdfDir = "/home/troels/src/molleordbog/data/statisk_data/spørgelister_samlet"
+    
+    
+    def doIt() { 
+      Model.obj.delete(Source query)
+
+      FileUtils.listFiles(new File(pdfDir), FileFilterUtils.suffixFileFilter(".pdf"),
+                          FileFilterUtils.trueFileFilter) foreach { 
+        file => {
+          val name = file.getName 
+          val regexp = "^([^_]+)_samlet\\.pdf$" r
+          
+          name match { 
+            case regexp(source) => 
+              val s = Source()
+              s.name = source
+              Model.obj.putOne(s)
+            
+              val url = getUploadUrl("/blobs/uploadSource")
+              sendFile(url, file, "application/pdf", Map("source" -> s.id.toString))
+          }
+        }
+      }
+    }
+
+  def main(args: Array[String]) {     
+    RemoteHandler.withRemoteHandler { 
+      doIt()
+    }
+  }
+
+}
+
+object AllOfIt { 
+  def main(args: Array[String]) { 
+    RemoteHandler.withRemoteHandler { 
+      ExtractItems.collectWordsInDb()
+      PictureExtractor.extractPictures()
+      VisualSearchParser.doIt()
+      ReadSourceData.doIt()
+    }
+  }
+}
+    

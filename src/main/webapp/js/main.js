@@ -60,6 +60,12 @@
 
      ExcisionHolder.prototype = {
          addExcision: function (x, y, width, height, destination) {
+             function opacitySetter(opacity) {
+                 return function (opacity) {
+                     $(this).children("div").fadeTo(0, opacity);
+                 };
+             }
+
              var lightOpacity = 0.3, darkOpacity = 0.8,
                  outerDiv =
                  $("<div />")
@@ -70,7 +76,8 @@
                             width: width,
                             height: height,
                             border: "1px solid",
-                            "cursor": "pointer"
+                            cursor: "pointer",
+                            "z-index": 10
                         })
                     .html($("<div/>").css({
                                               "width": "100%",
@@ -78,14 +85,11 @@
                                               "background-color": "blue",
                                               "opacity": lightOpacity
                                           }))
-                 .hover(function (e) {
-                            $(this).children("div").fadeTo(0, darkOpacity);
-                        },
-                        function (e) {
-                            $(this).children("div").fadeTo(0, lightOpacity);
-                        })
+                 .mouseover(opacitySetter(darkOpacity))
+                 .hover(opacitySetter(darkOpacity), opacitySetter(lightOpacity))
                  .click(function (e) {
                             window.location.href = destination;
+                            opacitySetter(lightOpacity).apply(this);
                         });
 
              this.div.append(outerDiv);
