@@ -123,15 +123,17 @@ def search seed={""}
 
 def mill_list lst
  + for data in lst
-  a(href={data["destination"]} onclick={"$(this).attr($(\"#\" + id).attr('src', '" ++ data["picture"] ++ "');"}) 
-   img(src={data["picture"]} id={data["id"]})
+  a(href={data["destination"]} )
+   img(src={data["picture"]} id={"nohover" ++ data["id"]})
     cursor: pointer;
+   img(src={data["hover_picture"]} style="display: none" id={"hover" ++ data["id"]})
   - jscript
    script:
     | var id = "{data["id"]}";
-    | $("#" + id).hover(function() {"{"} $("#" + id).attr('src', "{data["hover_picture"]}"); {"}"},
-    |                   function() {"{"} $("#" + id).attr('src', "{data["picture"]}"); {"}"})
-    |            .mouseover(function() {"{"} $("#" + id).attr('src', "{data["hover_picture"]}"); {"}"});
+    | $("#nohover" + id + ", #hover" + id)
+    |            .hover(function() {"{"} $("#hover" + id).show(); $("#nohover" + id).hide();  {"}"},
+    |                   function() {"{"} $("#nohover" + id).show(); $("#hover" + id).hide(); {"}"})
+    |            .mouseover(function() {"{"} $("#hover" + id).show(); $("#nohover" + id).hide();   {"}"});
 
 
 def visualsearch
@@ -191,7 +193,7 @@ def millbrowser_ajax vsp words subjects
    margin: 35px;
    width: 600px; height: 600px;
    float: left;
-   img(src={vsp.pictureUrl ++ "=s600"} id={imgid})
+   img(src={vsp.pictureUrl ++ "=s600"} id={imgid} style="width: 600px")
   #subjectcontainer
    - show_subjects {subjects}
   + if words

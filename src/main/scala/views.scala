@@ -40,6 +40,7 @@ object MolleOrdbogMappings extends BaseMapping {
       ("sourceRedirect" ==> Views.uploadSourceRedirect) | 
       ("uploadUrl" ==> Views.uploadUrl) |
       ("uploadRedirect" ==> Views.uploadRedirect) |
+      ("clean" ==> Views.removeBlobs) |
       ("uploadDone" ==> Views.uploadDone))) |
    ("kilder" / "oversigt" ==> Views.allSources)
 }
@@ -233,7 +234,21 @@ object Views {
   }
 
   def allSources: View = { 
-    req => 
-      TemplateResponse("main.all_sources", "sources" -> (Source.query toList))
+    req => TemplateResponse("main.all_sources", "sources" -> (Source.query toList))
+  }
+
+  def removeBlobs: View = { 
+    req => {
+      val bs = (BlobstoreServiceFactory getBlobstoreService) 
+
+      (new BlobInfoFactory() queryBlobInfos) foreach { 
+        bi => 
+          val key = bi getBlobKey 
+        
+          bs delete key
+      }
+        
+      TextResponse("All is gone")
+    }
   }
 }

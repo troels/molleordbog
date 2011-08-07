@@ -36,11 +36,13 @@ import org.apache.http.impl.client.BasicCookieStore
 import org.apache.http.client.protocol.ClientContext
 
 import com.googlecode.objectify.Key
+import org.bifrost.utils.Memcache
 import java.net.URLEncoder
 import scala.math.round
 
 trait BaseImporter { 
   Model.isImport = true
+  Memcache.isOn = false
 }
 
 trait ExcelHelper { 
@@ -158,15 +160,6 @@ object ExtractItems extends BaseImporter {
   }
   
   def collectWordsInDb() {
-    // val blobstoreService = BlobstoreServiceFactory getBlobstoreService
-    
-    // (SynonymGroup query) foreach { 
-    //   sg => sg pictureKey match { 
-    //     case null =>
-    //     case key => blobstoreService delete (new BlobKey(key))
-    //   }
-    // }
-
     Model.obj.delete(SynonymGroup query)
     Model.obj.delete(Synonym query)
 

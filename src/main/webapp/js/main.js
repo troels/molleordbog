@@ -51,7 +51,8 @@
                                        "left": this.dims.left,
                                        "top": this.dims.top,
                                        "width": this.dims.width,
-                                       "height": this.dims.height
+                                       "height": this.dims.height,
+                                       "z-index": 10
                                    });
          this.div = newDiv;
          $("body").append(newDiv);

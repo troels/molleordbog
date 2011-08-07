@@ -83,6 +83,6 @@ class SerializationTest extends FunSuite with ShouldMatchers with BeforeAndAfter
 
     val key = pic.save()
     
-    VisualSearchPicture.get(pic pictureName) 
+    VisualSearchPicture get (pic pictureName) 
   }
 }

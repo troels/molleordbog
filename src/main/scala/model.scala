@@ -11,26 +11,65 @@ import scala.collection.JavaConversions._
 import org.bifrost.utils.U._
 import Implicits._
 
+
+import org.bifrost.utils.Memcache
+
 object Implicits { 
   implicit def objectify2enhancer(ob: Objectify): ObjectifyEnhancer = new ObjectifyEnhancer(ob)
 }
 
-
 class ObjectifyEnhancer(ob: Objectify) { 
-  def putOne[T](obj: T): Key[T] = (ob put (Seq(obj) : _*)).keySet.iterator.next
-  def putMany[T](objs: BaseRow[T]*) = ob put (objs: _*)
+  def putOne[T <: BaseRow[_]](obj: T): Key[T] = {
+    (putMany(obj) head) _1
+  }
 
-  def getOne[T](cls: Class[T], id: Long): Option[T] = safelyNullable(ob get (cls, Seq(id) : _*) get id)
-  def getMany[T](cls: Class[T], objs: Long*): Map[Long, T] = new JMapWrapper((ob get (cls, objs: _*))) toMap
+  def putMany[T <: BaseRow[_]](objs: T*): Map[Key[T], T] = {
+    val res = (ob put (objs: _*)) toMap
+    
+    Memcache delete (res map { case (k, v) => k } toSeq :_*)
+    
+    res
+  }
+
+  def getOne[T <: BaseRow[_]](id: Key[T]): Option[T] = {
+    ob getMany (Seq(id) : _*) get id
+  }
+
+  def getMany[T <: BaseRow[_]](keys: Key[T]*): Map[Key[T], T] = {
+    val m: Map[Key[T], T] = Memcache get (keys: _*)
+    val missing = keys filterNot (m contains _)
+
+    if (missing nonEmpty) {
+      val newR = ob get missing toMap
+
+      Memcache put newR
+
+      newR ++ m
+    } else {
+      m
+    }
+  }
 }
 
-abstract class BaseRowObj[T](implicit m: Manifest[T]) {
+abstract class BaseRowObj[T <: BaseRow[_]](implicit m: Manifest[T]) {
   def query: Query[T] = (Model obj) query (m.erasure.asInstanceOf[Class[T]])
 
-  def get(key: String) = (Model obj) get (new Key(m.erasure.asInstanceOf[Class[T]], key))
-  def get(key: Long) = (Model obj) get (new Key(m.erasure.asInstanceOf[Class[T]], key))
-  def get(key: Key[T]) = (Model obj) get key
-  def get(keys: Seq[Key[T]]) = (Model obj) get keys toMap
+  def get(key: String): T = {
+    val k = new Key(m.erasure.asInstanceOf[Class[T]], key) 
+    get(k)
+  }    
+    
+  def get(key: Long): T = {
+    val k = new Key(m.erasure.asInstanceOf[Class[T]], key)
+    get(k)
+  }
+
+  def get(key: Key[T]): T = {
+    get(Seq(key)) get key get
+  }
+  
+  def get(keys: Seq[Key[T]]): Map[Key[T], T] = 
+    (Model obj) getMany (keys :_*) toMap
 }
 
 abstract class BaseRow[T](implicit m: Manifest[T]) { 
@@ -60,7 +99,7 @@ object Synonym extends BaseRowObj[Synonym] {
   def apply(): Synonym = new Synonym
 }
 
-class Synonym extends BaseRow[Synonym] {
+class Synonym extends BaseRow[Synonym] with java.io.Serializable {
   @Id var id: java.lang.Long = _
 
   @Indexed var word: String = _
@@ -83,7 +122,7 @@ object SynonymGroup extends BaseRowObj[SynonymGroup] {
   def apply(): SynonymGroup = new SynonymGroup
 }
 
-class SynonymGroup extends BaseRow[SynonymGroup] { 
+class SynonymGroup extends BaseRow[SynonymGroup] with java.io.Serializable { 
   @Id var id: java.lang.Long = _
 
   @Indexed var number: java.lang.Long = _
@@ -111,7 +150,7 @@ object VisualSearchPicture extends BaseRowObj[VisualSearchPicture] {
   def apply() = new VisualSearchPicture()
 }
 
-class VisualSearchPicture extends BaseRow[VisualSearchPicture] { 
+class VisualSearchPicture extends BaseRow[VisualSearchPicture] with java.io.Serializable { 
   @Id var pictureName: String = _
   
   var pictureKey: String = _
@@ -134,7 +173,7 @@ object Source extends BaseRowObj[Source] {
   def apply() = new Source()
 }
 
-class Source extends BaseRow[Source] { 
+class Source extends BaseRow[Source] with java.io.Serializable { 
   @Id var id: java.lang.Long = _
     
   var name: String = _
@@ -148,7 +187,7 @@ object Model {
   ObjectifyService.register(classOf[VisualSearchPicture])
   ObjectifyService.register(classOf[Source])
   
-  var isImport: Boolean = false
+  var isImport: Boolean = true
 
   def obj = ObjectifyService begin (new ObjectifyOpts().setGlobalCache(isImport))
 }
