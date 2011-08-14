@@ -6,6 +6,7 @@ import scala.util.matching.Regex
 import java.util.regex.Pattern
 import Mapping._
 
+import java.net.URLDecoder
 abstract class MapperElement { 
   def matchup(req: Request, part: String): Option[Request]
 }
@@ -38,7 +39,7 @@ abstract class Mapping {
   def apply(req: Request, uriParts: List[String]): MappingResult
 
   def apply(req: Request, uriParts: Option[List[String]]): MappingResult = 
-    apply(req, uriParts getOrElse (req.uri split "/" filter (! _.isEmpty) toList))
+    apply(req, uriParts getOrElse (URLDecoder decode (req.uri, "UTF-8") split "/" filter (! _.isEmpty) toList))
 
   def apply(req: Request): MappingResult = 
     apply(req, None)
@@ -48,10 +49,8 @@ abstract class Mapping {
 
 
 object FrontpageMapping {
-  def apply() = new FrontpageMapping()
+  def apply() = new MappingPathGenerator(List())
 }
-
-class FrontpageMapping()
 
 class MappingPath(pathMatcher: List[MapperElement], action: Mapping) extends Mapping {
   private def findBestMatch(req: Request, uriParts: List[String], 
@@ -86,7 +85,7 @@ class MappingAction(func: Request => Response) extends Mapping {
 
 class MappingPathGenerator(path: List[MapperElement]) { 
   def /(me: MapperElement) = new MappingPathGenerator(me :: path)
-  def /(mapping: MappingSwitch) = new MappingPath(path reverse, mapping)
+  def /(mapping: Mapping) = new MappingPath(path reverse, mapping)
   def ==>(action: Request => Response) = new MappingPath(path reverse, new MappingAction(action))
 }
 
@@ -94,7 +93,6 @@ abstract class BaseMapping {
   implicit def string2MapperElement(str: String) = new MapperString(str)
   implicit def mapperElement2MappingPath(mp: MapperElement): MappingPathGenerator = new MappingPathGenerator(List(mp))
   implicit def string2MappingPath(str: String): MappingPathGenerator = new MapperString(str)
-  implicit def frontpage2Mapping(fp: FrontpageMapping): MappingPathGenerator = new MappingPathGenerator(List())
 
   def slug(str: String) = new MapperSlug(str)
   def number(str: String) = new MapperNumber(str)

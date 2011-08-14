@@ -40,9 +40,20 @@ object MolleOrdbogMappings extends BaseMapping {
       ("sourceRedirect" ==> Views.uploadSourceRedirect) | 
       ("uploadUrl" ==> Views.uploadUrl) |
       ("uploadRedirect" ==> Views.uploadRedirect) |
-      ("clean" ==> Views.removeBlobs) |
       ("uploadDone" ==> Views.uploadDone))) |
-   ("kilder" / "oversigt" ==> Views.allSources)
+   ("kilder" / "oversigt" ==> Views.allSources) |
+   ("cms" / CMSMapping)
+}
+
+object CMSMapping extends Mapping {
+  override def apply(req: Request, uriParts: List[String]) = {
+    val uri = "/" + (uriParts mkString "/") toLowerCase
+    
+    println(uri)
+    Page getOption uri map { 
+      page => (req putRequestAttribute ("page", page), Views.cms)
+    }
+  }
 }
 
 
@@ -249,6 +260,13 @@ object Views {
       }
         
       TextResponse("All is gone")
+    }
+  }
+
+  def cms: View = {
+    req => {
+      val page = (req getRequestAttribute "page").get.asInstanceOf[Page]
+      TemplateResponse("main.cms", "page" -> page)
     }
   }
 }

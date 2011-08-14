@@ -1,7 +1,7 @@
 package org.bifrost.molleordbog.model
 
 import java.util.{ List => JList }
-import javax.persistence.Id
+import javax.persistence.{ Id, PrePersist }
 
 import com.googlecode.objectify._
 import com.googlecode.objectify.annotation._
@@ -54,20 +54,28 @@ class ObjectifyEnhancer(ob: Objectify) {
 abstract class BaseRowObj[T <: BaseRow[_]](implicit m: Manifest[T]) {
   def query: Query[T] = (Model obj) query (m.erasure.asInstanceOf[Class[T]])
 
-  def get(key: String): T = {
-    val k = new Key(m.erasure.asInstanceOf[Class[T]], key) 
-    get(k)
-  }    
+  def get(key: String): T = 
+    getOption(key) get
     
-  def get(key: Long): T = {
+  def get(key: Long): T = 
+    getOption(key) get
+
+  def get(key: Key[T]): T = 
+    getOption(key) get 
+  
+  def getOption(key: Key[T]): Option[T] =  
+    get(Seq(key)) get key
+
+  def getOption(key: Long): Option[T] = {
     val k = new Key(m.erasure.asInstanceOf[Class[T]], key)
-    get(k)
+    getOption(k)
   }
 
-  def get(key: Key[T]): T = {
-    get(Seq(key)) get key get
-  }
-  
+  def getOption(key: String): Option[T] = {
+    val k = new Key(m.erasure.asInstanceOf[Class[T]], key) 
+    getOption(k)
+  }    
+
   def get(keys: Seq[Key[T]]): Map[Key[T], T] = 
     (Model obj) getMany (keys :_*) toMap
 }
@@ -181,7 +189,24 @@ class Source extends BaseRow[Source] with java.io.Serializable {
   var pictureKey: String = _
 }
 
+object Page extends BaseRowObj[Page] {
+  def apply() = new Page()
+}
+
+class Page extends BaseRow[Page] { 
+  @Id var path: String = _
+  
+  @PrePersist def onSave(obj: Objectify) { 
+    path = path toLowerCase
+  }
+
+  var title: String = _
+  var html: String = _
+}
+  
+  
 object Model { 
+  ObjectifyService.register(classOf[Page])
   ObjectifyService.register(classOf[SynonymGroup])
   ObjectifyService.register(classOf[Synonym])
   ObjectifyService.register(classOf[VisualSearchPicture])

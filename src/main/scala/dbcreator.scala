@@ -586,6 +586,37 @@ object ReadSourceData extends FileUploader with BaseImporter {
 
 }
 
+object SetupCms extends BaseImporter { 
+  val baseDir = "/home/troels/src/molleordbog/data/statisk_data/bag om"
+  val filepattern = ".digest"
+  
+  def main(args: Array[String]) { 
+    RemoteHandler.withRemoteHandler { 
+      doIt()
+    }
+  }
+  def doIt() {
+    Model.obj.delete(Page query)
+
+    val pages = FileUtils.listFiles(new File(baseDir), FileFilterUtils.suffixFileFilter(filepattern),
+                        FileFilterUtils.trueFileFilter) map { 
+      file => { 
+        val path = (file getPath) replaceAll ("^" + (Pattern quote baseDir), "") replaceAll ("\\.html\\.digest$", "")
+        
+        println(path)
+        val page = Page()
+        page.path = path toLowerCase
+
+        page.title = "yadayada"
+        page.html = FileUtils.readFileToString (file, "UTF-8")
+        page
+      }
+    } toSeq
+    
+    Model.obj.putMany(pages : _*)
+  }
+}
+  
 object AllOfIt { 
   def main(args: Array[String]) { 
     RemoteHandler.withRemoteHandler { 

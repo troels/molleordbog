@@ -123,17 +123,18 @@ def search seed={""}
 
 def mill_list lst
  + for data in lst
-  a(href={data["destination"]} )
-   img(src={data["picture"]} id={"nohover" ++ data["id"]})
+  a(href={data["destination"]} 
+    onclick={"$('#" ++ data["id"] ++ "').attr('src', '" ++ data["picture"]  ++ "')"})
+   img(src={data["picture"]} id={data["id"]})
     cursor: pointer;
    img(src={data["hover_picture"]} style="display: none" id={"hover" ++ data["id"]})
   - jscript
    script:
     | var id = "{data["id"]}";
-    | $("#nohover" + id + ", #hover" + id)
-    |            .hover(function() {"{"} $("#hover" + id).show(); $("#nohover" + id).hide();  {"}"},
-    |                   function() {"{"} $("#nohover" + id).show(); $("#hover" + id).hide(); {"}"})
-    |            .mouseover(function() {"{"} $("#hover" + id).show(); $("#nohover" + id).hide();   {"}"});
+    | $("#" + id)
+    |            .hover(function() {"{"} $("#" + id).attr('src', '{data["hover_picture"]}');  {"}"},
+    |                   function() {"{"} $("#" + id).attr('src', '{data["picture"]}'); {"}"})
+    |            .mouseover(function() {"{"} $("#" + id).attr('src', '{data["hover_picture"]}');   {"}"});
 
 
 def visualsearch
@@ -191,9 +192,9 @@ def millbrowser_ajax vsp words subjects
  + let imgid = guid
   #imgcontainer
    margin: 35px;
-   width: 600px; height: 600px;
+   width: 600px; 
    float: left;
-   img(src={vsp.pictureUrl ++ "=s600"} id={imgid} style="width: 600px")
+   img(src={vsp.pictureUrl ++ "=s600"} id={imgid} style="width: 600px; max-height: 600px;")
   #subjectcontainer
    - show_subjects {subjects}
   + if words
@@ -201,6 +202,8 @@ def millbrowser_ajax vsp words subjects
   - clear
   - jscript
    script:
+    | var img = $("#{imgid}");
+    | function addExcisions() {"{"}
     | var excisionHolder = molle.makeExcisionHolder("{imgid}");
     + if vsp.excisions
      + for excision in vsp.excisions
@@ -208,7 +211,9 @@ def millbrowser_ajax vsp words subjects
       |                             { excision.y } * $("#{imgid}").height() / { vsp.height } , 
       |                             { excision.width } * $("#{imgid}").width() / { vsp.width } , 
       |                             { excision.height } * $("#{imgid}").height() / { vsp.height }, 
-      |                            "{"/visuel/browse/" ++ excision.picture.getName ++ "/"}");
+      |                             "{"/visuel/browse/" ++ excision.picture.getName ++ "/"}");
+    | {"}"}
+    | if (img.width() > 0) addExcisions(); else img.load(addExcisions);
                        
 def millbrowser vsp words subjects
  - main 
@@ -224,7 +229,14 @@ def all_sources sources
       | { source.name } 
       a(href={ "/blobs/getBlob/?blob=" ++ u source.pictureKey }) | Download pdf
               
-     
+def cms page
+ - main 
+  title: | {page.title}
+  body:
+   .cms
+    | { e page.html }
+
 def clear
  div
   clear: both;
+
