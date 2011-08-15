@@ -93,7 +93,7 @@ def article synonym article
    #article
     h1 
      text-align: center; text-transform: capitalize;
-     | { synonym.word }
+     | { article.canonicalWord }
     #article-texts
      float: left; width: 310px;
      - synonyms {article.getSynonyms}

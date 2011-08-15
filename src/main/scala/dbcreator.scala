@@ -160,7 +160,10 @@ object ExtractItems extends BaseImporter {
     Model.obj.delete(SynonymGroup query)
     Model.obj.delete(Synonym query)
 
-    val items = OfficeHelpers.readItemsXls(fileName)
+    val items = OfficeHelpers.readItemsXls(fileName) filterNot (
+      Map("jysk ordbog" -> true, "bormholm ordbog" -> true, 
+          "ømålsordbog" -> true, "torben olsen" -> true) contains _.source
+    )
     val itemsMap: HashMap[Int, List[ParsedWord]] = new HashMap[Int, List[ParsedWord]]()
     
     items foreach {item => 
@@ -231,36 +234,47 @@ object ExtractItems extends BaseImporter {
 
     val endings = List("", "e", "er", "n", "r", "t", "es", "s", "en", "et", "ens", "ets", 
                        "ers", "ed", "ede", "eders", "eder", "ene")
-    val exactWords = List("tolde", "kat", "eg", "skrå", "lig", "hånd", "strå")
+    val exactWords = List("tolde", "kat", "eg", "skrå", "lig", "hånd", "strå", "undesten")
+
     val errorneousWords = List("mus", "hvede", "lus", "ters", "hals", "bos", "ligger", "kors", "aller", "ringe", 
                                "løber", "lås", "plader", "krans", "line", "halv", "hæl", "hus", "hat", "grund", 
                                "sten", "ben", "ret", "led", "skur", "is", "kar", "byg", "let", "kran", "ås",
                                "grene", "råen", "nød", "top", "nøder", "kile", "bille", "skee", "skar", "spes", 
                                "kappe", "lur", "solen", "rine", "hvas", "alle", "bøs", "to sten", "fyr", "skaled", 
                                "koben")
+    
+    val alwaysDrop = List() // = List("gjorde", "grunden", "grund", "gulvet", "gulv", "jernplade", "jernplader", 
+    //                       "nok", "sten", "stenen", "forreste", "løberen", "løber", "hugge", "hugget", 
+    //                       "tønder", "tønde", "øje", "afstand", "hovedet", "plade", "hånd", "alle", 
+    //                       "beklædningen", "rager", "rage", "bund", "bunden", "akselen", "aksel", "ende", 
+    //                       "midten", "skruer", "skruen", "gjord", "boltet", "bolte", "åbning", "jernkæde")
 
     val synonyms = syns filter { _.isInstanceOf[Synonym] } map { _.asInstanceOf[Synonym] }
     val synonymGroups = syns filter { _.isInstanceOf[SynonymGroup] } map { _.asInstanceOf[SynonymGroup] }
 
-    val synonymWords = (synonyms sortBy { _.word.length } reverse) map { 
-      syn => 
-        val word = (syn word) toLowerCase
+    val synonymWords = (synonymGroups sortBy { _.canonicalWord.length } reverse) flatMap { 
+      sg => 
+        val word = (sg canonicalWord) toLowerCase
         
-        if (exactWords contains word) { 
-          (syn, new Regex("\\b" + (Pattern quote word) + "\\b"))
+        if (alwaysDrop contains word) { 
+          None
+        } else if (exactWords contains word) { 
+          Some((sg, new Regex("\\b" + (Pattern quote word) + "\\b")))
         } else if ((errorneousWords contains word) || (word length) <= 4 ) { 
-          (syn, new Regex("\\b" + (Pattern quote word) + "("+ (endings map { Pattern quote _ }  mkString "|") + ")\\b"))
+          Some((sg, new Regex(
+            "\\b" + (Pattern quote word) + "("+ (endings map { Pattern quote _ }  mkString "|") + ")\\b")))
         } else {
-          val ending = endings filter { syn.word.endsWith(_) } sortBy { _.length } reverse
-          val word = if (ending isEmpty) syn.word else syn.word.substring(0, syn.word.length - ending(0).length)
-          (syn, new Regex("\\b" + (Pattern quote word) + "(" + (endings map { Pattern quote _ } mkString "|") + ")\\b"))
+          val ending = endings filter { sg.canonicalWord.endsWith(_) } sortBy { _.length } reverse
+          val word = if (ending isEmpty) sg.canonicalWord else sg.canonicalWord.substring(0, sg.canonicalWord.length - ending(0).length)
+          Some((sg, new Regex(
+            "\\b" + (Pattern quote word) + "(" + (endings map { Pattern quote _ } mkString "|") + ")\\b")))
         }
     } 
 
     def overlaps(m0: MatchData, m1: MatchData): Boolean = 
       m0.start <= m1.start && m1.start < m0.end || m1.start <= m0.start && m0.start < m1.end
 
-    def merge(lst: List[(Synonym, MatchData)], m: (Synonym, MatchData)): List[(Synonym, MatchData)] = {
+    def merge[T](lst: List[(T, MatchData)], m: (T, MatchData)): List[(T, MatchData)] = {
       lst find { case (s, md) => overlaps(md, m._2) } match {
         case None => m :: lst 
         case Some((s, md)) => 
@@ -282,20 +296,20 @@ object ExtractItems extends BaseImporter {
           case (synonym, regex) => 
             (regex findAllIn text matchData) map { 
               mtch => (synonym, mtch)} toList
-        } foldLeft (List[(Synonym, MatchData)]())) { merge(_, _) } sortBy { 
+        } foldLeft (List[(SynonymGroup, MatchData)]())) { merge(_, _) } sortBy { 
           _._2.start 
         } reverse
 
         val resText = (intervals foldLeft (sg text)) { 
           (text, synmd) => synmd match {
-            case (syn, md) => 
-              if (syn.synonymGroup == sg.getKey) { 
+            case (syngroup, md) => 
+              if (syngroup.getKey == sg.getKey) { 
                 text.substring(0, md.start) + "<span class=\"ownlink\">" + text.substring(md.start, md.end) + 
                 "</span>" + text.substring(md.end)
               } else {
-                text.substring(0, md.start) + "<a class=\"interlink\" href=\"/ordbog/opslag/?ord=" + 
-                (URLEncoder encode (syn.word, "UTF-8")) + "\">" +
-                text.substring(md.start, md.end) + "</a>" + text.substring(md.end)
+                text.substring(0, md.start) + 
+                ("<a class=\"interlink\" href=\"/ordbog/nummer/?nummer=%d\">%s</a>" format (
+                  syngroup id, text.substring(md.start, md.end))) + text.substring(md.end)
               }
           }
         }
