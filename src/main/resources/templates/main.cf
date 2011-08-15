@@ -92,16 +92,16 @@ def article synonym article
   body: 
    #article
     h1 
-     text-align: center;
+     text-align: center; text-transform: capitalize;
      | { synonym.word }
     #article-texts
-     float: left; width: 500px;
+     float: left; width: 310px;
      - synonyms {article.getSynonyms}
      #article-text
       margin: 10px;
       | {e article.text}
     #article-picture
-     float: left; width: 300px;
+     float: left; width: 600px;
      + if article.pictureUrl
       img(src={article.pictureUrl})
    div(style="clear: both")
@@ -171,7 +171,7 @@ def milltype milltype
 def show_subjects subjects
  + let id = guid
   div(id={id})
-   float: left; width: 270px;
+   float: left; width: 220px;
    margin-top: 50px;
    + for subject in subjects
     h3 a(href="#") | { subject.name } 
@@ -191,10 +191,8 @@ def show_words words
 def millbrowser_ajax vsp words subjects
  + let imgid = guid
   #imgcontainer
-   margin: 35px;
-   width: 600px; 
-   float: left;
-   img(src={vsp.pictureUrl ++ "=s600"} id={imgid} style="width: 600px; max-height: 600px;")
+   margin: 35px; width: 600px; float: left;
+   img(src={vsp.pictureUrl} id={imgid} style="width: 600px; max-height: 600px;")
   #subjectcontainer
    - show_subjects {subjects}
   + if words
@@ -207,10 +205,10 @@ def millbrowser_ajax vsp words subjects
     | var excisionHolder = molle.makeExcisionHolder("{imgid}");
     + if vsp.excisions
      + for excision in vsp.excisions
-      | excisionHolder.addExcision( { excision.x } * $("#{imgid}").width() / { vsp.width } , 
-      |                             { excision.y } * $("#{imgid}").height() / { vsp.height } , 
-      |                             { excision.width } * $("#{imgid}").width() / { vsp.width } , 
-      |                             { excision.height } * $("#{imgid}").height() / { vsp.height }, 
+      | excisionHolder.addExcision( { excision.x } * img.width() / { vsp.width } , 
+      |                             { excision.y } * img.height() / { vsp.height } , 
+      |                             { excision.width } * img.width() / { vsp.width } , 
+      |                             { excision.height } * img.height() / { vsp.height }, 
       |                             "{"/visuel/browse/" ++ excision.picture.getName ++ "/"}");
     | {"}"}
     | if (img.width() > 0) addExcisions(); else img.load(addExcisions);
@@ -223,11 +221,11 @@ def millbrowser vsp words subjects
 def all_sources sources
  - main 
   body:
-    + for source in sources
-     div.source-element
-      margin: 10px 0;
-      | { source.name } 
-      a(href={ "/blobs/getBlob/?blob=" ++ u source.pictureKey }) | Download pdf
+   + for source in sources
+    .source-element
+     margin: 10px 0;
+     | { source.name } 
+     a(href={ "/blobs/getBlob/?blob=" ++ u source.pictureKey }) | Download pdf
               
 def cms page
  - main 

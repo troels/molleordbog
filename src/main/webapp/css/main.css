@@ -53,8 +53,7 @@ a:hover, a:active, a:focus {
 }
 
 .main-container { 
-  margin: 1px 30px;
-  width: 100%;
+    padding: 25px;
 }
  
 .container {
@@ -73,7 +72,7 @@ a:hover, a:active, a:focus {
 }
 
 #footer {
-	padding: 10px 0;
+	padding: 10px 30px;
 	background: #FFF;
 	font-size: small;
 	font-style: italic;
@@ -90,6 +89,7 @@ a:hover, a:active, a:focus {
 	border-bottom-color: #74A6D7;
 	border-left-color: #74A6D7;
 	color: #666;
+  
 }
 
 .fltrt { 

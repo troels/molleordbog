@@ -79,18 +79,15 @@ object OfficeHelpers extends ExcelHelper {
           val wordId = readCellValue(cell0)
           val wordNr_source = readCellValue(cell1)
           val word = readCellValue(cell2)
-
-          val transform = wordNr_source match  {
+          
+          (wordNr_source match {
             case WordNrSourceRegex(numberString, source)  => {
               val number = if (numberString isEmpty) 0 else Integer parseInt numberString 
               Some((number, source))
             }
-            case _ => {
-              None
-            }
-          }
-          transform map { case (wordNumber, source) => 
-            ParsedWord(source, wordNumber, word)
+            case _ => None
+          }) map { 
+            case (wordNumber, source) => ParsedWord(source, wordNumber, word)
           }
         }
       }
@@ -624,6 +621,7 @@ object AllOfIt {
       PictureExtractor.extractPictures()
       VisualSearchParser.doIt()
       ReadSourceData.doIt()
+      SetupCms.doIt()
     }
   }
 }
