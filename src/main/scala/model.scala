@@ -181,12 +181,16 @@ object Source extends BaseRowObj[Source] {
   def apply() = new Source()
 }
 
-class Source extends BaseRow[Source] with java.io.Serializable { 
+class Source extends BaseRow[Source]  { 
   @Id var id: java.lang.Long = _
     
   var name: String = _
+  var text: String = _
+  
+  var pdfKey: String = _
 
   var pictureKey: String = _
+  var pictureUrl: String = _
 }
 
 object Page extends BaseRowObj[Page] {
@@ -203,8 +207,7 @@ class Page extends BaseRow[Page] {
   var title: String = _
   var html: String = _
 }
-  
-  
+
 object Model { 
   ObjectifyService.register(classOf[Page])
   ObjectifyService.register(classOf[SynonymGroup])

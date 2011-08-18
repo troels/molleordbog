@@ -36,8 +36,10 @@ object MolleOrdbogMappings extends BaseMapping {
       ("getBlob" ==> Views.getBlob) |
       ("uploadVisual" ==> Views.uploadVisualUrl) |
       ("uploadVisualRedirect" ==> Views.uploadVisualRedirect) |
-      ("uploadSource" ==> Views.uploadSourceUrl) | 
-      ("sourceRedirect" ==> Views.uploadSourceRedirect) | 
+      ("uploadSourcePdf" ==> Views.uploadSourcePdfUrl) | 
+      ("sourcePdfRedirect" ==> Views.uploadSourcePdfRedirect) | 
+      ("uploadSourcePicture" ==> Views.uploadSourcePictureUrl) | 
+      ("sourcePictureRedirect" ==> Views.uploadSourcePictureRedirect) | 
       ("uploadUrl" ==> Views.uploadUrl) |
       ("uploadRedirect" ==> Views.uploadRedirect) |
       ("uploadDone" ==> Views.uploadDone))) |
@@ -123,8 +125,12 @@ object Views {
     _ => TextResponse(blobstoreService createUploadUrl "/blobs/uploadRedirect/")
   }
 
-  def uploadSourceUrl: View = {
-    _ => TextResponse(blobstoreService createUploadUrl "/blobs/sourceRedirect/")
+  def uploadSourcePdfUrl: View = {
+    _ => TextResponse(blobstoreService createUploadUrl "/blobs/sourcePdfRedirect/")
+  }
+
+  def uploadSourcePictureUrl: View = {
+    _ => TextResponse(blobstoreService createUploadUrl "/blobs/sourcePictureRedirect/")
   }
 
   val uploadVisualRedirect: View = 
@@ -154,24 +160,26 @@ object Views {
     }))
   
   type TakesUpload = { 
-    var pictureKey: String
-    
     def save(): BaseRow[_]
   }
     
   def genericUploadRedirect[T <: TakesUpload](argName: String, getObj: String => T, 
-                                              beforeSave: Option[(T, BlobKey) => Unit] = None) : View = withArg(argName) { 
+                                              beforeSave: Option[(T, BlobKey) => Unit] = None,
+                                              keyAttribute: String = "pictureKey") : View = withArg(argName) { 
     (req, protoKey) =>  {
       val key = URLDecoder decode (protoKey, "UTF-8")
       val blobKey = (blobstoreService getUploadedBlobs (req.originalRequest get)) get "blob"
       
       val obj = getObj(key)
       
-      if (obj.pictureKey != null) {
-        blobstoreService delete new BlobKey(obj pictureKey)
+      val getter = obj.getClass.getMethod(keyAttribute)
+      val setter = obj.getClass.getMethod("%s_$eq" format keyAttribute, classOf[String])
+      
+      if (getter.invoke(obj) != null) {
+        blobstoreService delete new BlobKey(getter.invoke(obj).asInstanceOf[String])
       }
       
-      obj.pictureKey = blobKey getKeyString
+      setter.invoke(obj, blobKey getKeyString)
       
       beforeSave map { bs => bs(obj, blobKey) } 
 
@@ -187,8 +195,16 @@ object Views {
       obj.pictureUrl = pictureUrl
     }))
   
-  val uploadSourceRedirect: View = genericUploadRedirect("source", {
-    k => Source get (java.lang.Long parseLong k) })
+  val uploadSourcePdfRedirect: View = genericUploadRedirect("source", {
+    k => Source get (java.lang.Long parseLong k) }, keyAttribute = "pdfKey")
+  
+  val uploadSourcePictureRedirect: View = genericUploadRedirect("source", {
+    k => Source get (java.lang.Long parseLong k) 
+  }, 
+    Some({(obj: Source, blobKey: BlobKey) => 
+      val pictureUrl = (ImagesServiceFactory getImagesService) getServingUrl blobKey
+      obj.pictureUrl = pictureUrl
+    }), "pictureKey")
 
   def uploadDone: View = { _ => TextResponse("Upload complete") }
   
@@ -245,7 +261,7 @@ object Views {
   }
 
   def allSources: View = { 
-    req => TemplateResponse("main.all_sources", "sources" -> (Source.query toList))
+    req => TemplateResponse("main.sources", "sources" -> (Source.query toList))
   }
 
   def removeBlobs: View = { 
@@ -253,10 +269,7 @@ object Views {
       val bs = (BlobstoreServiceFactory getBlobstoreService) 
 
       (new BlobInfoFactory() queryBlobInfos) foreach { 
-        bi => 
-          val key = bi getBlobKey 
-        
-          bs delete key
+        bi => bs delete (bi getBlobKey)
       }
         
       TextResponse("All is gone")

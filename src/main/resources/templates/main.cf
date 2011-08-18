@@ -218,15 +218,34 @@ def millbrowser vsp words subjects
   body: 
    - millbrowser_ajax {vsp} {words} {subjects}
 
-def all_sources sources
+def sources sources
  - main 
   body:
-   + for source in sources
-    .source-element
-     margin: 10px 0;
-     | { source.name } 
-     a(href={ "/blobs/getBlob/?blob=" ++ u source.pictureKey }) | Download pdf
-              
+   h1
+    text-align: center;
+    | De primære kilder
+   #text
+    float: left; width: 510px;
+    |   <p dir="ltr" style="text-align:left;margin-bottom:10pt"><span xml:lang="da-DK" lang="da-DK">Dansk Mølleordbog er en kildeudgivelse af enogtyve besvarelser af </span><span style="font-style:italic" xml:lang="da-DK" lang="da-DK">Institut for jysk sprog- og kulturforsknings spørgelister nr.1 Møllen</span><span xml:lang="da-DK" lang="da-DK">,</span><span style="font-style:italic" xml:lang="da-DK" lang="da-DK">&nbsp;</span><span xml:lang="da-DK" lang="da-DK">bestående af A. teksthæfte og B. billedhæfte. Spørgelisterne blev besvaret af møllere omkring midten af 1900-tallet og er med deres 52 sider meget omfattende. Meddelerne har arbejdet på møller som ansatte eller ejere fra slutningen af 1800-tallet op til midten af 1900-tallet. Der er seks besvarelser fra Sjællandske møller, en fra Falster og en fra Bornholm, samt tretten fra Jylland og desværre ingen fra Fyn. Nogle besvarelser omhandler mere end én mølle, f.eks. både en vand- og en vindmølle. Dette unikke materiale udgør grundstammen i ordbogen, og i de tilfælde hvor det har været relevant at angive specifikke mål eller antal, stammer eksemplerne fra spørgelisterne.</span></p>
+    | <p dir="ltr" style="text-align:left;margin-bottom:10pt"><span xml:lang="da-DK" lang="da-DK">Spørgelisterne er i første omgang udarbejdet og besvaret med et fokus på dialekter. Alle meddelere er blevet spurgt om hvor de har lært mølleriet for at vide om der har været sproglige påvirkninger andre steder fra. I nogle tilfælde har intervieweren været til stede under besvarelsen og spørgelisten er derfor besvaret helt eller delvist med lydskrift. Her i ordbogen er synonymer og egne medtaget, men den faglige ekspertise er udelukkende kulturhistorisk. </span></p>
+   #sources
+    float: left; padding: 15px 50px;
+    + for source in sources
+     .source-element
+      width: 300px;
+      a(href={ "/kilder/" })
+       | { source.name } 
+      a(href={ "/blobs/getBlob/?blob=" ++ u source.pdfKey }) 
+       float: right;
+       | Download pdf
+   - clear
+def show_source source
+ -main
+  body: 
+   h1(style="text-transform: capitalize") | { source.name }
+   
+   
+   
 def cms page
  - main 
   title: | {page.title}

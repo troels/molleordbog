@@ -243,11 +243,11 @@ object ExtractItems extends BaseImporter {
                                "kappe", "lur", "solen", "rine", "hvas", "alle", "bøs", "to sten", "fyr", "skaled", 
                                "koben")
     
-    val alwaysDrop = List() // = List("gjorde", "grunden", "grund", "gulvet", "gulv", "jernplade", "jernplader", 
-    //                       "nok", "sten", "stenen", "forreste", "løberen", "løber", "hugge", "hugget", 
-    //                       "tønder", "tønde", "øje", "afstand", "hovedet", "plade", "hånd", "alle", 
-    //                       "beklædningen", "rager", "rage", "bund", "bunden", "akselen", "aksel", "ende", 
-    //                       "midten", "skruer", "skruen", "gjord", "boltet", "bolte", "åbning", "jernkæde")
+    val alwaysDrop = List("gjorde", "grunden", "grund", "gulvet", "gulv", "jernplade", "jernplader", 
+                          "nok", "sten", "stenen", "forreste", "løberen", "løber", "hugge", "hugget", 
+                          "tønder", "tønde", "øje", "afstand", "hovedet", "plade", "hånd", "alle", 
+                           "beklædningen", "rager", "rage", "bund", "bunden", "akselen", "aksel", "ende", 
+                           "midten", "skruer", "skruen", "gjord", "boltet", "bolte", "åbning", "jernkæde")
 
     val synonyms = syns filter { _.isInstanceOf[Synonym] } map { _.asInstanceOf[Synonym] }
     val synonymGroups = syns filter { _.isInstanceOf[SynonymGroup] } map { _.asInstanceOf[SynonymGroup] }
@@ -565,11 +565,31 @@ object VisualSearchParser extends ExcelHelper with FileUploader with BaseImporte
 
 object ReadSourceData extends FileUploader with BaseImporter { 
   val pdfDir = "/home/troels/src/molleordbog/data/statisk_data/spørgelister_samlet"
-    
-    
+  val picDir = "/home/troels/src/molleordbog/data/statisk_data/bag om/kildemateriale/spørgelisterne/spørgelister_intro/foto_spørgelister"
+  val htmlDir = "/home/troels/src/molleordbog/data/statisk_data/bag om/kildemateriale/spørgelisterne/spørgelister_intro"
+
     def doIt() { 
       Model.obj.delete(Source query)
 
+      val map = new HashMap[String, Source]
+      
+      FileUtils.listFiles(new File(htmlDir), FileFilterUtils.suffixFileFilter(".digest"),
+                            FileFilterUtils.trueFileFilter) foreach { 
+        file => {
+          val regexp = "^([^.]+)\\.html\\.digest$".r
+          
+          file getName match { 
+            case regexp(source) => 
+              val s = Source()
+              map(source.toLowerCase) = s
+              s.name = source
+              s.text = FileUtils.readFileToString (file, "UTF-8")
+
+              Model.obj.putOne(s)
+          }
+        }
+      }
+      
       FileUtils.listFiles(new File(pdfDir), FileFilterUtils.suffixFileFilter(".pdf"),
                           FileFilterUtils.trueFileFilter) foreach { 
         file => {
@@ -578,15 +598,33 @@ object ReadSourceData extends FileUploader with BaseImporter {
           
           name match { 
             case regexp(source) => 
-              val s = Source()
-              s.name = source
-              Model.obj.putOne(s)
-            
-              val url = getUploadUrl("/blobs/uploadSource")
+              val translations = Map(
+                "ubberupøresø" -> "ubberup",
+                "sømølle" -> "sø")
+              val s = map(translations getOrElse (source, source) )
+
+              val url = getUploadUrl("/blobs/uploadSourcePdf")
               sendFile(url, file, "application/pdf", Map("source" -> s.id.toString))
           }
         }
       }
+
+      val regexp = "^([^.]+)\\.jpg$" r
+      
+      FileUtils.listFiles(new File(picDir), FileFilterUtils.suffixFileFilter(".jpg"),
+                          FileFilterUtils.trueFileFilter) foreach { 
+        file => 
+          
+          file.getName match {
+            case regexp(source) => 
+              val s = map(source)
+            
+              val url = getUploadUrl("/blobs/uploadSourcePicture")
+              sendFile(url, file, "image/jpeg", Map("source" -> s.id.toString))
+          }
+        }
+      
+      
     }
 
   def main(args: Array[String]) {     
@@ -639,4 +677,3 @@ object AllOfIt {
     }
   }
 }
-    
