@@ -43,7 +43,9 @@ object MolleOrdbogMappings extends BaseMapping {
       ("uploadUrl" ==> Views.uploadUrl) |
       ("uploadRedirect" ==> Views.uploadRedirect) |
       ("uploadDone" ==> Views.uploadDone))) |
-   ("kilder" / "oversigt" ==> Views.allSources) |
+   ("kilder" / ( 
+     ("oversigt" ==> Views.allSources) |
+     ("viskilde" / MapperNumber("id")) ==> Views.showSource)) |
    ("cms" / CMSMapping)
 }
 
@@ -262,6 +264,15 @@ object Views {
 
   def allSources: View = { 
     req => TemplateResponse("main.sources", "sources" -> (Source.query toList))
+  }
+
+
+  def showSource: View = {
+    req => 
+      val sourceId = req getRequestAttribute "id" get
+      val source = Source get (java.lang.Long parseLong sourceId.asInstanceOf[String])
+    
+      TemplateResponse("main.show_source", "source" -> source)
   }
 
   def removeBlobs: View = { 

@@ -233,7 +233,7 @@ def sources sources
     + for source in sources
      .source-element
       width: 300px;
-      a(href={ "/kilder/" })
+      a(href={ "/kilder/viskilde/" ++ source.id.toString ++ "/" })
        | { source.name } 
       a(href={ "/blobs/getBlob/?blob=" ++ u source.pdfKey }) 
        float: right;
@@ -244,8 +244,31 @@ def show_source source
   body: 
    h1(style="text-transform: capitalize") | { source.name }
    
-   
-   
+
+def show_source source
+  - main
+   body: 
+     h1
+      text-align: center; text-transformation: capitalize;
+      | { source.name }
+     #leftcolumn
+      width: 510px;
+      float: left; 
+      a(href={"/blob/getBlob/?blob=" ++ u source.pdfKey})
+       | Download spørgeskema
+      #text
+       | { e source.text }
+      #back
+       float: left;
+       margin-top: 50px;
+       a(href="/kilder/oversigt/") | Gå tilbage til primær kildeoversigt
+
+     #pic
+      width: 400px; float: left;
+      img(src={source.pictureUrl ++ "=s400"})
+     - clear
+
+     
 def cms page
  - main 
   title: | {page.title}
