@@ -4,8 +4,8 @@
 (function ($, window) {
      "use strict";
 
-     var molle = window.molle = window.molle || {};
 
+     var molle = window.molle = window.molle || {};
      var enable_assert = true;
 
      function assert(cond, msg) {
@@ -39,8 +39,8 @@
 
      function ExcisionHolder(id) {
          this.img_sel = "#" + jqesc(id);
+
          var img = $(this.img_sel);
-         assertEquals(img.size(), 1);
 
          this.dims = img.offset();
          this.dims.width = img.width();
@@ -59,11 +59,16 @@
          this.excisions = [];
      }
 
+     var excisionZIndex = 1000;
      ExcisionHolder.prototype = {
-         addExcision: function (x, y, width, height, destination) {
+         addExcision: function (x, y, width, height, destination, name) {
              function opacitySetter(opacity) {
-                 return function () {
+                 return function (e) {
                      $(this).children("div").fadeTo(0, opacity);
+                     if (e) {
+                         e.stopPropagation();
+                         e.preventDefault();
+                     }
                  };
              }
 
@@ -78,7 +83,7 @@
                             height: height,
                             border: "1px solid",
                             cursor: "pointer",
-                            "z-index": 10
+                            "z-index": excisionZIndex--
                         })
                     .html($("<div/>").css({
                                               "width": "100%",
@@ -89,15 +94,38 @@
                  .mouseover(opacitySetter(darkOpacity))
                  .hover(opacitySetter(darkOpacity), opacitySetter(lightOpacity))
                  .click(function (e) {
-                            window.location.href = destination;
-                            opacitySetter(lightOpacity).apply(this);
+                            if (destination) {
+                                window.location.href = destination;
+                                opacitySetter(lightOpacity).apply(this);
+                            } else if (name) {
+                                molle.subjectAccordion.accordion(
+                                    "activate", "#subjectcontainer h3:contains(" + jqesc(name) + ")");
+                            }
                         });
 
-             this.div.height(600).width(600).append(outerDiv);
+             this.div.append(outerDiv);
          }
 
      };
      molle.makeExcisionHolder = function(id) { return new ExcisionHolder(id); };
+
+     molle.activateSynonym = function (synonym, synonyms) {
+         $(".word.marked").toggleClass("marked");
+         $(".word").filter(
+             function () {
+                 return !!(new RegExp("^\\s*" + synonym + "[,\\s]*$").exec($(this).text()));
+             })
+             .toggleClass('marked');
+         synonyms.pop();
+         var dom = $("<div />");
+         for (var i = 0; i < synonyms.length; ++i) {
+             dom.append($("<a />").attr('href', '/kilder/viskilde/' + synonyms[i] + '/').text(synonyms[i]));
+             if (i != synonyms.length - 1) {
+                 dom.append(", ");
+             }
+         }
+         $("#synonymbox").html(dom);
+     };
 
      $(function () {
 	         $('#nav li').hover(

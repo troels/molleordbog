@@ -31,11 +31,13 @@ def header
                               "name": "Om enkelte opslag" },
                              {"url": "/cms/kontakt/kontakt/", "name": "Kontakt"}
                          ]}]
-     li 
+     li(onclick={"window.location.href=\"" ++ menuitem["url"] ++ "\""})
+      cusor: pointer; 
       a(href={menuitem["url"]}) | { menuitem["name"] }
       + if menuitem["children"]
        ul + for submenuitem in menuitem["children"]
-         li a(href={submenuitem["url"]}) | { submenuitem["name"] }
+         li(onclick={"window.location.href=\"" ++ submenuitem["url"] ++ "\""})
+           a(href={submenuitem["url"]}) | { submenuitem["name"] }
 
  br(clear="both")
 
@@ -53,7 +55,7 @@ def main
   head
    - metatag
    title | {title}
-   - css {"http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.14/themes/base/jquery-ui.css"}
+   - css {"//ajax.googleapis.com/ajax/libs/jqueryui/1.8.14/themes/base/jquery-ui.css"}
    - css {"/css/main.css"}
 
    - js  {"//ajax.googleapis.com/ajax/libs/jquery/1.6.1/jquery.min.js"}
@@ -89,20 +91,37 @@ def source name hidden
    margin-right: 4px;
    | {name} 
   
-def synonyms synonyms
+def synonyms synonyms word={""}
  #synonyms
   margin: 10px; 
+  p | Synonymer:
   + for synonym in synonyms
-   .word
-    span 
-     font-weight: bold; margin-right: 4px;
-     | {synonym.word}
-    + for source in synonym.sources
-     - source {source} { for_loop_index_source > 3 }
-    + if synonym.sources.size > 4
-     - jslink { "Se alle" } { "molle.showSources(this)" }
- 
-def article synonym article
+   + let id = guid
+    span.word(id={id})
+     + if for_loop_index_synonym != synonyms.length - 1
+      | {synonym.word},
+     + else
+      | {synonym.word}
+    - jscript
+     script: 
+      | var activator = function () {"{"}
+      | molle.activateSynonym("{synonym.word}", [
+      + for source in synonym.sources
+       |  "{source}",
+      | null]);
+      | {"}"};
+      | $("#{id}").click(activator);
+      + if word = synonym.word
+       | activator()
+
+    |
+  #synonymboxwrapper
+   margin-top: 10px;  
+   | Bliver brugt i egnene: 
+   #synonymbox
+    margin-top: 10px;
+   
+def article synonym article word={""}
  - main 
   body: 
    #article
@@ -111,7 +130,7 @@ def article synonym article
      | { article.canonicalWord }
     #article-texts
      float: left; width: 310px;
-     - synonyms {article.getSynonyms}
+     - synonyms {article.getSynonyms} {word}
      #article-text
       margin: 10px;
       | {e article.text}
@@ -189,27 +208,28 @@ def show_subjects subjects
    float: left; width: 220px;
    margin-top: 50px;
    + for subject in subjects
-    h3 a(href="#") | { subject.name }
+    h3 a(href="javascript:void(0)") | { subject.name }
     .subject 
      - show_words { subject.subjects }
    - jscript
     script:
-     | $("#{id}").accordion({"{"} autoHeight: false
+     | molle.subjectAccordion = $("#{id}").accordion({"{"} autoHeight: false
      + if subjects.length - 1 != 0
       | , collapsible: true, active: false 
      | {"}"});
 
 def show_words words
- ul + for word in words
-  li 
-   list-style-type: none; margin-top: 5px; margin-bottom: 5px;
-   a(href={"/ordbog/nummer/?nummer=" ++ word.id}) | { word.canonicalWord } 
+ ul 
+  + for word in words 
+   li 
+    list-style-type: none; margin-top: 5px; margin-bottom: 5px;
+    a(href={"/ordbog/nummer/?nummer=" ++ word.id}) | { word.canonicalWord } 
 
 def millbrowser_ajax vsp subjects
  + let imgid = guid
   #imgcontainer
    margin: 35px; width: 600px; float: left;
-   img(src={vsp.pictureUrl} id={imgid})
+   img(src={vsp.pictureUrl} id={imgid} style="width: 600px")
   #subjectcontainer
    - show_subjects {subjects}
   - clear
@@ -224,7 +244,15 @@ def millbrowser_ajax vsp subjects
       |                             { excision.y } * img.height() / { vsp.height } , 
       |                             { excision.width } * img.width() / { vsp.width } , 
       |                             { excision.height } * img.height() / { vsp.height }, 
-      |                             "{"/visuel/browse/" ++ excision.picture.getName ++ "/"}");
+      + if excision.picture
+       |                            "{ "/visuel/browse/" ++ excision.picture.getName ++ "/"}",
+      + else
+       |                            "",
+      + if excision.name
+       |                            "{ excision.name }"
+      + else
+       |                            ""
+      | );
     | {"}"}
     | if (img.height() > 0) addExcisions(); else img.load(addExcisions);
                        
@@ -248,7 +276,7 @@ def sources sources
     + for source in sources
      .source-element
       width: 300px;
-      a(href={ "/kilder/viskilde/" ++ source.id.toString ++ "/" })
+      a(href={ "/kilder/viskilde/" ++ source.name ++ "/" })
        | { source.name } 
       a(href={ "/blobs/getBlob/?blob=" ++ u source.pdfKey }) 
        float: right;

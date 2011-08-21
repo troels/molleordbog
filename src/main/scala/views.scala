@@ -47,7 +47,7 @@ object MolleOrdbogMappings extends BaseMapping {
       ("uploadDone" ==> Views.uploadDone))) |
    ("kilder" / ( 
      ("oversigt" ==> Views.allSources) |
-     ("viskilde" / MapperNumber("id")) ==> Views.showSource)) |
+     ("viskilde" / MapperWord("id")) ==> Views.showSource)) |
    ("cms" / CMSMapping)
 }
 
@@ -97,6 +97,7 @@ object Views {
         case None => new RedirectResponse("/?ord=" + (URLEncoder encode (word, "UTF-8")))
         case Some(syn) => TemplateResponse(
           "main.article", 
+          "word" -> word,
           "synonym" -> syn, 
           "article" -> (syn getSynonymGroup))
       }
@@ -203,10 +204,10 @@ object Views {
     }))
   
   val uploadSourcePdfRedirect: View = genericUploadRedirect("source", {
-    k => Source get (java.lang.Long parseLong k) }, keyAttribute = "pdfKey")
+    k => Source get k}, keyAttribute = "pdfKey")
   
   val uploadSourcePictureRedirect: View = genericUploadRedirect("source", {
-    k => Source get (java.lang.Long parseLong k) 
+    k => Source get k
   }, 
     Some({(obj: Source, blobKey: BlobKey) => 
       val pictureUrl = (ImagesServiceFactory getImagesService) getServingUrl blobKey
@@ -286,7 +287,7 @@ object Views {
   def showSource: View = {
     req => 
       val sourceId = req getRequestAttribute "id" get
-      val source = Source get (java.lang.Long parseLong sourceId.asInstanceOf[String])
+      val source = Source get sourceId.asInstanceOf[String]
     
       TemplateResponse("main.show_source", "source" -> source)
   }

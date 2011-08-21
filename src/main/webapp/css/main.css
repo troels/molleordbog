@@ -164,3 +164,14 @@ a:active {
 .cms li {
     margin-left: 1em;
 }
+
+span.word {
+    font-weight: bold; white-space: nowrap;
+     cursor: pointer;
+} 
+
+span.word.marked {
+     color: red; font-weight: bolder;
+} 
+
+

@@ -537,14 +537,21 @@ object VisualSearchParser extends ExcelHelper with FileUploader with BaseImporte
               }
             }
           }
-        } else if (xLeft != null) { 
+        } 
+        
+        if (xLeft != null) { 
           def convert(str: String): Int = round(java.lang.Float parseFloat str)
         
           val x = convert(xLeft); val y = convert(yUp)
           val width = convert(xRight) - x; val height = convert(yDown) - y
-            
-          val key = new Key[VisualSearchPicture](classOf[VisualSearchPicture], pointingAtPicture)
-          val excision = new Excision(x, y, width, height, key)
+          
+          val key = 
+            if (pointingAtPicture == null || (pointingAtPicture isEmpty)) 
+              null
+            else
+              new Key[VisualSearchPicture](classOf[VisualSearchPicture], pointingAtPicture)
+
+          val excision = new Excision(x, y, width, height, key, subject)
 
           vsp.excisions = (if(vsp.excisions == null) List(excision) else (excision :: (vsp.excisions toList))) toArray
         } 
@@ -590,7 +597,7 @@ object ReadSourceData extends FileUploader with BaseImporter {
             case regexp(source) => 
               val s = Source()
               map(source.toLowerCase) = s
-              s.name = source
+              s.name = source.toLowerCase
               s.text = FileUtils.readFileToString (file, "UTF-8")
 
               Model.obj.putOne(s)
@@ -612,7 +619,7 @@ object ReadSourceData extends FileUploader with BaseImporter {
               val s = map(translations getOrElse (source, source) )
 
               val url = getUploadUrl("/blobs/uploadSourcePdf")
-              sendFile(url, file, "application/pdf", Map("source" -> s.id.toString))
+              sendFile(url, file, "application/pdf", Map("source" -> s.name))
           }
         }
       }
@@ -628,7 +635,7 @@ object ReadSourceData extends FileUploader with BaseImporter {
               val s = map(source)
             
               val url = getUploadUrl("/blobs/uploadSourcePicture")
-              sendFile(url, file, "image/jpeg", Map("source" -> s.id.toString))
+              sendFile(url, file, "image/jpeg", Map("source" -> s.name))
           }
         }
       

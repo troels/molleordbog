@@ -152,7 +152,7 @@ class SynonymGroup extends BaseRow[SynonymGroup] with java.io.Serializable {
 }
 
 case class Subject(name: String, words: Array[Key[SynonymGroup]])
-case class Excision(x: Int, y: Int, width: Int, height: Int, picture: Key[VisualSearchPicture])
+case class Excision(x: Int, y: Int, width: Int, height: Int, picture: Key[VisualSearchPicture], name: String)
 
 object VisualSearchPicture extends BaseRowObj[VisualSearchPicture] { 
   def apply() = new VisualSearchPicture()
@@ -182,9 +182,7 @@ object Source extends BaseRowObj[Source] {
 }
 
 class Source extends BaseRow[Source]  { 
-  @Id var id: java.lang.Long = _
-    
-  var name: String = _
+  @Id var name: String = _
   var text: String = _
   
   var pdfKey: String = _
