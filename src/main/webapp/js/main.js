@@ -93,12 +93,22 @@
                             opacitySetter(lightOpacity).apply(this);
                         });
 
-             this.div.append(outerDiv);
-
-
+             this.div.height(600).width(600).append(outerDiv);
          }
 
      };
      molle.makeExcisionHolder = function(id) { return new ExcisionHolder(id); };
 
+     $(function () {
+	         $('#nav li').hover(
+		           function () {
+			             $('ul', this).slideDown(100);
+
+		           },
+		           function () {
+			             //hide its submenu
+			             $('ul', this).slideUp(100);
+		           }
+	         );
+       });
 }(jQuery, window));

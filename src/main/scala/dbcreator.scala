@@ -175,6 +175,8 @@ object ExtractItems extends BaseImporter {
 
     var sgId: Long = 1
     var synId: Long = 1
+    val synsMap = new HashMap[String, Boolean]
+
     val syns: List[BaseRow[_]] = files flatMap { 
       file => 
         (OfficeHelpers readDocFile file.getPath) map { 
@@ -198,14 +200,19 @@ object ExtractItems extends BaseImporter {
                   }
                 }
 
-                val synonyms = wordMap map { 
+                val synonyms = wordMap flatMap { 
                   case (k, v) => {
-                    val syn = new Synonym
-                    syn.word = k
-                    syn.sources = v
-                    syn.id = synId
-                    synId += 1
-                    syn
+                    if (synsMap getOrElse (k.toLowerCase, true)) {
+                      synsMap(k.toLowerCase) = false
+                      val syn = new Synonym
+                      syn.word = k
+                      syn.sources = v
+                      syn.id = synId
+                      synId += 1
+                      Some(syn)
+                    } else {
+                      None
+                    }
                   }
                 } toList
                 
@@ -247,7 +254,8 @@ object ExtractItems extends BaseImporter {
                           "nok", "sten", "stenen", "forreste", "løberen", "løber", "hugge", "hugget", 
                           "tønder", "tønde", "øje", "afstand", "hovedet", "plade", "hånd", "alle", 
                            "beklædningen", "rager", "rage", "bund", "bunden", "akselen", "aksel", "ende", 
-                           "midten", "skruer", "skruen", "gjord", "boltet", "bolte", "åbning", "jernkæde")
+                           "midten", "skruer", "skruen", "gjord", "boltet", "bolte", "åbning", "jernkæde", 
+                           "fod")
 
     val synonyms = syns filter { _.isInstanceOf[Synonym] } map { _.asInstanceOf[Synonym] }
     val synonymGroups = syns filter { _.isInstanceOf[SynonymGroup] } map { _.asInstanceOf[SynonymGroup] }
@@ -635,7 +643,7 @@ object ReadSourceData extends FileUploader with BaseImporter {
 
 }
 
-object SetupCms extends BaseImporter { 
+object SetupCms extends BaseImporter with FileUploader{ 
   val baseDir = "/home/troels/src/molleordbog/data/statisk_data/bag om"
   val filepattern = ".digest"
   
@@ -652,17 +660,29 @@ object SetupCms extends BaseImporter {
       file => { 
         val path = (file getPath) replaceAll ("^" + (Pattern quote baseDir), "") replaceAll ("\\.html\\.digest$", "")
         
-        println(path)
         val page = Page()
         page.path = path toLowerCase
 
         page.title = "yadayada"
-        page.html = FileUtils.readFileToString (file, "UTF-8")
+        page.html = FileUtils.readFileToString (file, "UTF-8") replaceAll ("http%3a//", "http://")
+        
+        Model.obj.putOne(page)
+        
+        val jpgs = file.getParentFile.listFiles filter { _.getName.endsWith(".jpg") }
+        if (jpgs.length > 1) {
+          throw new Exception("Too many files: " + jpgs.toList)
+        }
+        
+        (jpgs headOption) map { 
+          f => {
+            val url = getUploadUrl("/blobs/uploadPagePicture/")
+            sendFile(url, f, "image/jpeg", Map("page" -> page.path.toString))
+          }
+        } 
+
         page
       }
     } toSeq
-    
-    Model.obj.putMany(pages : _*)
   }
 }
   

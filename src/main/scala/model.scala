@@ -206,6 +206,9 @@ class Page extends BaseRow[Page] {
 
   var title: String = _
   var html: String = _
+
+  var pictureKey: String = _
+  var pictureUrl: String = _
 }
 
 object Model { 

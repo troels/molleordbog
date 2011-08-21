@@ -40,6 +40,8 @@ object MolleOrdbogMappings extends BaseMapping {
       ("sourcePdfRedirect" ==> Views.uploadSourcePdfRedirect) | 
       ("uploadSourcePicture" ==> Views.uploadSourcePictureUrl) | 
       ("sourcePictureRedirect" ==> Views.uploadSourcePictureRedirect) | 
+      ("uploadPagePicture" ==> Views.uploadPagePictureUrl) | 
+      ("pagePictureRedirect" ==> Views.uploadPagePictureRedirect) | 
       ("uploadUrl" ==> Views.uploadUrl) |
       ("uploadRedirect" ==> Views.uploadRedirect) |
       ("uploadDone" ==> Views.uploadDone))) |
@@ -53,7 +55,6 @@ object CMSMapping extends Mapping {
   override def apply(req: Request, uriParts: List[String]) = {
     val uri = "/" + (uriParts mkString "/") toLowerCase
     
-    println(uri)
     Page getOption uri map { 
       page => (req putRequestAttribute ("page", page), Views.cms)
     }
@@ -135,6 +136,10 @@ object Views {
     _ => TextResponse(blobstoreService createUploadUrl "/blobs/sourcePictureRedirect/")
   }
 
+  def uploadPagePictureUrl: View = {
+    _ => TextResponse(blobstoreService createUploadUrl "/blobs/pagePictureRedirect/")
+  }
+
   val uploadVisualRedirect: View = 
     genericUploadRedirect("key", {
       k => VisualSearchPicture get k
@@ -208,6 +213,13 @@ object Views {
       obj.pictureUrl = pictureUrl
     }), "pictureKey")
 
+  val uploadPagePictureRedirect: View = genericUploadRedirect("page", {
+    k => Page get k 
+  }, Some({(obj: Page, blobKey: BlobKey) => 
+      val pictureUrl = (ImagesServiceFactory getImagesService) getServingUrl blobKey
+      obj.pictureUrl = pictureUrl
+  }), "pictureKey")
+                                                              
   def uploadDone: View = { _ => TextResponse("Upload complete") }
   
   def visualStart: View = { 
@@ -230,7 +242,7 @@ object Views {
         val milltype = req getRequestAttribute "milltype" map { str => millConverter(str.asInstanceOf[String]) } get
         val inout = req getRequestAttribute "inout" get
 
-        "%s_%s.jpg" format (milltype, inout)
+        "%s_%s.jpg" format (milltype, if (milltype == "vandmølle" && inout == "ude") "skema" else inout)
       }
     )
   }
@@ -244,17 +256,21 @@ object Views {
       val wordsAsync = if (vsp.words != null) Model.obj.async get(vsp words) else null
       val subjects = vsp subjects
 
+      val words = 
+        if (wordsAsync != null) 
+          List(StudiedSubject("Illustration", wordsAsync.get.values.toList)) 
+        else 
+          List()
+      
       val studiedSubjects = if (subjects != null) { 
         subjects map { case Subject(name, keys) => (name, Model.obj.async get (keys toSeq)) } map { 
-          case (name, vsps) => StudiedSubject(name, ((vsps get) values) toList)
-        }
-      } else null
-          
-
-      val words = if (wordsAsync != null) ((wordsAsync get) values) toList else null
+          case (name, vsps) => StudiedSubject(name, vsps.get.values.toList)
+        } toList
+      } else List()
+      
       
       TemplateResponse(if (req isAjax) "main.millbrowser_ajax" else  "main.millbrowser", 
-                       "vsp" -> vsp, "words" -> words, "subjects" -> studiedSubjects)
+                       "vsp" -> vsp, "subjects" -> (words ++ studiedSubjects))
     }
   }
   

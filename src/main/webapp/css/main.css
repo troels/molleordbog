@@ -1,8 +1,3 @@
-/* * {  */
-/*     padding: 0; */
-/*     margin: 0; */
-/* } */
-
 body {
 	font: 100%/1.4 Verdana, Arial, Helvetica, sans-serif;
   background: url("/img/body_bg.jpg") repeat-x scroll left top #FFFFFF;
@@ -35,26 +30,69 @@ a:hover, a:active, a:focus {
 	text-decoration: none;
 }
 
-.menu-item { 
-    display: inline;
+#nav {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+#nav li { 
+    float: left;
+    display: block;
+    background: #CBB078;
+    position: relative;
+    text-align: center;
+    z-index: 10;
     cursor: pointer;
     width: 190px;
-    background-color: #CBB078;
-/*    background-color: #C3B68C; */
-    text-align: center;
-    border-left: 1px solid white;
-    float: left;
+    margin: 0 1px;
+    padding: 5px 0;
+    font-weight: bold;
 }
 
-.menu-item:first-child { 
-    border-left: none;
+#nav > li:last-child { 
+    width: 192px;;
+    margin-right: 0px;
 }
 
-.menu-item a { 
-    padding: 0.5em 0.75em;
-    font-size: 100%;
-    display: block;
-    color: #333333;
+#nav > li:first-child { 
+    margin-left: 0;
+}
+#nav li a:hover {
+		color:#fff;
+}
+
+/* you can make a different style for default selected value */
+#nav a.selected {
+		color:#f00;
+}
+
+/* submenu, it's hidden by default */
+#nav ul {
+		position:absolute; 
+		left:0; 
+		display:none; 
+    margin-top: 5px;
+		margin:5px 0 0 -1px;
+		list-style:none;
+    width: 100%;
+}
+
+#nav ul li {
+		float:left; 
+		border-top:1px solid #fff;
+}
+		
+/* display block will make the link fill the whole area of LI */
+#nav ul a {
+		display:block;  
+		height:15px;
+		padding: 8px 5px;
+		color:#666;
+}
+		
+#nav ul a:hover {
+		text-decoration:underline;	
 }
 
 .main-container { 
@@ -121,4 +159,8 @@ a:hover {
 a:active {
 	text-decoration: none;
 	color: #0CF;
+}
+
+.cms li {
+    margin-left: 1em;
 }

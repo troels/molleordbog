@@ -16,12 +16,27 @@ def header
  .container
   #header.container.header
    img(src="/img/molle_topbar.jpg" alt="forside")
-   ul.submenu
-    list-style: none; 
-    + for menuitem in [{"url": "/soeg/", "name": "Søg"},
-                       {"url": "/visuel/", "name": "Visuel Søgning"}]
-     li.menu-item
-      a (href={menuitem["url"]}) | { menuitem["name"] }
+   #nav
+    + for menuitem in [{"url": "/soeg/", "name": "Søg", "children": []},
+                       {"url": "/visuel/", "name": "Visuel Søgning", "children": []},
+                       {"url": "/kilder/", "name": "Om kilderne", "children": [
+                             {"url": "/kilder/oversigt/", "name": "De primære kilder" },
+                             {"url": "/cms/kildemateriale/sekundære kilder/sekundære_kilder/", 
+                              "name": "De sekundære kilder" }]},
+                       {"url": "/animationer/", "name": "Animationer", "children": [] },
+                       {"url": "/cms/om mølleordbog/om projektet/projektet/", "name": "Om mølleordbogen", 
+                        "children": [
+                             {"url": "/cms/om mølleordbog/om_processen/om_processen/", "name": "Om processen"},
+                             {"url": "/cms/om mølleordbog/det_enkelte_opslag/det enkelte opslag/", 
+                              "name": "Om enkelte opslag" },
+                             {"url": "/cms/kontakt/kontakt/", "name": "Kontakt"}
+                         ]}]
+     li 
+      a(href={menuitem["url"]}) | { menuitem["name"] }
+      + if menuitem["children"]
+       ul + for submenuitem in menuitem["children"]
+         li a(href={submenuitem["url"]}) | { submenuitem["name"] }
+
  br(clear="both")
 
 def footer
@@ -41,8 +56,8 @@ def main
    - css {"http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.14/themes/base/jquery-ui.css"}
    - css {"/css/main.css"}
 
-   - js  {"http://ajax.googleapis.com/ajax/libs/jquery/1.6.1/jquery.min.js"}
-   - js  {"http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.14/jquery-ui.min.js"}
+   - js  {"//ajax.googleapis.com/ajax/libs/jquery/1.6.1/jquery.min.js"}
+   - js  {"//ajax.googleapis.com/ajax/libs/jqueryui/1.8.14/jquery-ui.min.js"}
    - js  {"/js/underscore-min.js"}
    - js  {"/js/main.js"}
   body
@@ -104,7 +119,7 @@ def article synonym article
      float: left; width: 600px;
      + if article.pictureUrl
       img(src={article.pictureUrl})
-   div(style="clear: both")
+   - clear
 
 def search seed={""}
  - main
@@ -174,13 +189,15 @@ def show_subjects subjects
    float: left; width: 220px;
    margin-top: 50px;
    + for subject in subjects
-    h3 a(href="#") | { subject.name } 
+    h3 a(href="#") | { subject.name }
     .subject 
      - show_words { subject.subjects }
    - jscript
     script:
-     | $("#{id}").accordion({"{"} autoHeight: false,
-     | collapsible: true, active: false {"}"});
+     | $("#{id}").accordion({"{"} autoHeight: false
+     + if subjects.length - 1 != 0
+      | , collapsible: true, active: false 
+     | {"}"});
 
 def show_words words
  ul + for word in words
@@ -188,15 +205,13 @@ def show_words words
    list-style-type: none; margin-top: 5px; margin-bottom: 5px;
    a(href={"/ordbog/nummer/?nummer=" ++ word.id}) | { word.canonicalWord } 
 
-def millbrowser_ajax vsp words subjects
+def millbrowser_ajax vsp subjects
  + let imgid = guid
   #imgcontainer
    margin: 35px; width: 600px; float: left;
-   img(src={vsp.pictureUrl} id={imgid} style="width: 600px; max-height: 600px;")
+   img(src={vsp.pictureUrl} id={imgid})
   #subjectcontainer
    - show_subjects {subjects}
-  + if words
-   - show_words {words}
   - clear
   - jscript
    script:
@@ -211,12 +226,12 @@ def millbrowser_ajax vsp words subjects
       |                             { excision.height } * img.height() / { vsp.height }, 
       |                             "{"/visuel/browse/" ++ excision.picture.getName ++ "/"}");
     | {"}"}
-    | if (img.width() > 0) addExcisions(); else img.load(addExcisions);
+    | if (img.height() > 0) addExcisions(); else img.load(addExcisions);
                        
-def millbrowser vsp words subjects
+def millbrowser vsp subjects
  - main 
   body: 
-   - millbrowser_ajax {vsp} {words} {subjects}
+   - millbrowser_ajax {vsp} {subjects}
 
 def sources sources
  - main 
@@ -271,10 +286,13 @@ def show_source source
      
 def cms page
  - main 
-  title: | {page.title}
+  title: | Mølleordbog
   body:
-   .cms
+   #text.cms
+    + if page.pictureUrl
+     #pic(style="float:right; margin: 0 20px;") img(src={page.pictureUrl})
     | { e page.html }
+   - clear
 
 def clear
  div
