@@ -174,3 +174,23 @@ span.word.marked {
 li.nav-marked {
     background-color: #74A6D7 !important;
 }
+
+.ui-state-default { 
+    background: #C3B68C !important;
+}
+
+.ui-corner-all {
+    border-bottom-right-radius: 0px !important;
+    border-bottom-left-radius: 0px !important;
+    border-top-right-radius: 0px !important;
+    border-top-left-radius: 0px !important;
+}
+.ui-corner-top { 
+    border-top-right-radius: 0px !important;
+    border-top-left-radius: 0px !important;
+}
+
+.ui-corner-bottom { 
+    border-bottom-right-radius: 0px !important;
+    border-bottom-left-radius: 0px !important;
+}
