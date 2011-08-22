@@ -129,7 +129,7 @@ def synonyms synonyms word={""}
   #synonymbox
    margin-top: 10px;
    
-def article synonym article word={""}
+def article article word={""}
  - main 
   body: 
    #article

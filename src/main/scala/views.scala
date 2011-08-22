@@ -110,7 +110,6 @@ object Views {
     
     TemplateResponse(
       "main.article", 
-      "synonym" -> (Synonym get sg.synonyms.get(0)),
       "article" -> sg
     )
   }

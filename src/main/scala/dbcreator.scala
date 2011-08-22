@@ -597,7 +597,7 @@ object ReadSourceData extends FileUploader with BaseImporter {
               val s = Source()
               map(source.toLowerCase) = s
               s.name = source.toLowerCase
-              s.text = FileUtils.readFileToString (file, "UTF-8")
+              s.text = FileUtils.readFileToString (file, "UTF-8") replaceAll ("http%3a//", "http://")
 
               Model.obj.putOne(s)
           }
