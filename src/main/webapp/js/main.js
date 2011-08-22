@@ -88,7 +88,7 @@
                     .html($("<div/>").css({
                                               "width": "100%",
                                               "height": "100%",
-                                              "background-color": "blue",
+                                              "background-color": "#74A6D7",
                                               "opacity": lightOpacity
                                           }))
                  .mouseover(opacitySetter(darkOpacity))
@@ -116,26 +116,38 @@
                  return !!(new RegExp("^\\s*" + synonym + "[,\\s]*$").exec($(this).text()));
              })
              .toggleClass('marked');
+
          synonyms.pop();
-         var dom = $("<div />");
+         if (synonyms.length == 0) {
+             $("#synonymbox").html();
+             return;
+         }
+         var dom = $("<div />").css("margin-top", "10px");
+
          for (var i = 0; i < synonyms.length; ++i) {
              dom.append($("<a />").attr('href', '/kilder/viskilde/' + synonyms[i] + '/').text(synonyms[i]));
              if (i != synonyms.length - 1) {
                  dom.append(", ");
              }
          }
-         $("#synonymbox").html(dom);
+
+         var outerDiv = $("<div />")
+             .css("margin-top", "10px")
+             .append("Bliver brugt i egnen" + (synonyms.length > 1 ? "e" : "" ) + ":")
+             .append(dom);
+
+         $("#synonymbox").html(outerDiv);
      };
 
      $(function () {
 	         $('#nav li').hover(
 		           function () {
 			             $('ul', this).slideDown(100);
-
+                   $(this).addClass('nav-marked');
 		           },
 		           function () {
-			             //hide its submenu
 			             $('ul', this).slideUp(100);
+                   $(this).removeClass('nav-marked');
 		           }
 	         );
        });

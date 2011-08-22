@@ -33,6 +33,7 @@ object MolleOrdbogMappings extends BaseMapping {
     ("ordbog" / "opslag" ==>  Views.lookup) |
     ("ordbog" / "nummer" ==>  Views.lookupSynonymgroup) |
     ("blobs" / (
+      ("cleanemout" ==> Views.removeBlobs) |
       ("getBlob" ==> Views.getBlob) |
       ("uploadVisual" ==> Views.uploadVisualUrl) |
       ("uploadVisualRedirect" ==> Views.uploadVisualRedirect) |

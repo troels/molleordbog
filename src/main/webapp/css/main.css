@@ -39,19 +39,18 @@ a:hover, a:active, a:focus {
 #nav li { 
     float: left;
     display: block;
-    background: #CBB078;
+    background: #C3B68C;
     position: relative;
-    text-align: center;
+    text-align: left;
     z-index: 10;
     cursor: pointer;
-    width: 190px;
+    width: 170px;
     margin: 0 1px;
-    padding: 5px 0;
-    font-weight: bold;
+    padding: 5px 10px;
 }
 
 #nav > li:last-child { 
-    width: 192px;;
+    width: 172px;
     margin-right: 0px;
 }
 
@@ -62,24 +61,28 @@ a:hover, a:active, a:focus {
 		color:#fff;
 }
 
-/* you can make a different style for default selected value */
 #nav a.selected {
 		color:#f00;
 }
 
-/* submenu, it's hidden by default */
 #nav ul {
 		position:absolute; 
 		left:0; 
+    color: black;
 		display:none; 
-    margin-top: 5px;
 		margin:5px 0 0 -1px;
 		list-style:none;
     width: 100%;
 }
 
+#nav > li:last-child ul li {
+    width: 172px;
+}
+
+
 #nav ul li {
 		float:left; 
+    width: 170px;
 		border-top:1px solid #fff;
 }
 		
@@ -105,12 +108,7 @@ a:hover, a:active, a:focus {
   margin: 0 auto;
 }
 
-.header {
-	background: #ADB96E;
-}
-
 .content {
-
 	padding: 10px 0;
 }
 
@@ -132,7 +130,6 @@ a:hover, a:active, a:focus {
 	border-bottom-color: #74A6D7;
 	border-left-color: #74A6D7;
 	color: #666;
-  
 }
 
 .fltrt { 
@@ -174,4 +171,6 @@ span.word.marked {
      color: red; font-weight: bolder;
 } 
 
-
+li.nav-marked {
+    background-color: #74A6D7 !important;
+}

@@ -16,13 +16,15 @@ def header
  .container
   #header.container.header
    img(src="/img/molle_topbar.jpg" alt="forside")
+    margin-bottom: -3px;
    #nav
-    + for menuitem in [{"url": "/soeg/", "name": "Søg", "children": []},
+    + for menuitem in [{"url": "/soeg/", "name": "Ordsøgning", "children": []},
                        {"url": "/visuel/", "name": "Visuel Søgning", "children": []},
-                       {"url": "/kilder/", "name": "Om kilderne", "children": [
-                             {"url": "/kilder/oversigt/", "name": "De primære kilder" },
+                       {"url": "/kilder/oversigt/", "name": "Om kilderne", "children": [
                              {"url": "/cms/kildemateriale/sekundære kilder/sekundære_kilder/", 
-                              "name": "De sekundære kilder" }]},
+                              "name": "De sekundære kilder" },
+                             {"url": "/cms/kildemateriale/illustrationer/Illustrationer til Mølleordbog/", 
+                              "name": "Illustrationer" }]},
                        {"url": "/animationer/", "name": "Animationer", "children": [] },
                        {"url": "/cms/om mølleordbog/om projektet/projektet/", "name": "Om mølleordbogen", 
                         "children": [
@@ -31,13 +33,22 @@ def header
                               "name": "Om enkelte opslag" },
                              {"url": "/cms/kontakt/kontakt/", "name": "Kontakt"}
                          ]}]
-     li(onclick={"window.location.href=\"" ++ menuitem["url"] ++ "\""})
-      cusor: pointer; 
-      a(href={menuitem["url"]}) | { menuitem["name"] }
+     li
+      cursor: pointer; 
+      + if menuitem["children"]
+       div(onclick={"window.location.href=\"" ++ menuitem["url"] ++ "\""})
+        width: 100%; height: 100%;
+        background-image: url("/img/menu_bar_down.gif");
+        background-repeat: no-repeat; background-position: 95% 50%;
+        | { menuitem["name"] }
+      + else
+       div(onclick={"window.location.href=\"" ++ menuitem["url"] ++ "\""})
+        width: 100%; height: 100%; 
+        | { menuitem["name"] }
       + if menuitem["children"]
        ul + for submenuitem in menuitem["children"]
          li(onclick={"window.location.href=\"" ++ submenuitem["url"] ++ "\""})
-           a(href={submenuitem["url"]}) | { submenuitem["name"] }
+          | { submenuitem["name"] }
 
  br(clear="both")
 
@@ -115,11 +126,8 @@ def synonyms synonyms word={""}
        | activator()
 
     |
-  #synonymboxwrapper
-   margin-top: 10px;  
-   | Bliver brugt i egnene: 
-   #synonymbox
-    margin-top: 10px;
+  #synonymbox
+   margin-top: 10px;
    
 def article synonym article word={""}
  - main 
@@ -297,7 +305,7 @@ def show_source source
      #leftcolumn
       width: 510px;
       float: left; 
-      a(href={"/blob/getBlob/?blob=" ++ u source.pdfKey})
+      a(href={"/blobs/getBlob/?blob=" ++ u source.pdfKey})
        | Download spørgeskema
       #text
        | { e source.text }

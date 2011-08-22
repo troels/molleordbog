@@ -6,7 +6,7 @@ object RemoteHandler {
   var installer: RemoteApiInstaller = null
   def setUp()  {
     val options = new RemoteApiOptions()
-                    .server("localhost", 8080)
+                    .server("localhost", 80)
                     .credentials("bn.troels@gmail.com", "")
     installer = new RemoteApiInstaller()
     installer.install(options)

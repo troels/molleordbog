@@ -157,8 +157,8 @@ object ExtractItems extends BaseImporter {
   }
   
   def collectWordsInDb() {
-    Model.obj.delete(SynonymGroup query)
-    Model.obj.delete(Synonym query)
+    Model.obj.delete(SynonymGroup.query.fetchKeys)
+    Model.obj.delete(Synonym.query.fetchKeys)
 
     val items = OfficeHelpers.readItemsXls(fileName) filterNot (
       Map("jysk ordbog" -> true, "bormholm ordbog" -> true, 
@@ -485,8 +485,7 @@ object VisualSearchParser extends ExcelHelper with FileUploader with BaseImporte
     val rows = sheet getPhysicalNumberOfRows
     
     val fields = new HashMap[String, VisualSearchPicture]
-    Model.obj.delete(VisualSearchPicture query)
-    
+    Model.obj.delete(VisualSearchPicture.query.fetchKeys)
 
     (1 until rows) flatMap { rowNr => safelyNullable(sheet getRow rowNr) } foreach { 
       row => 
@@ -584,7 +583,7 @@ object ReadSourceData extends FileUploader with BaseImporter {
   val htmlDir = "/home/troels/src/molleordbog/data/statisk_data/bag om/kildemateriale/spørgelisterne/spørgelister_intro"
 
     def doIt() { 
-      Model.obj.delete(Source query)
+      Model.obj.delete(Source.query.fetchKeys)
 
       val map = new HashMap[String, Source]
       
@@ -660,7 +659,7 @@ object SetupCms extends BaseImporter with FileUploader{
     }
   }
   def doIt() {
-    Model.obj.delete(Page query)
+    Model.obj.delete(Page.query.fetchKeys)
 
     val pages = FileUtils.listFiles(new File(baseDir), FileFilterUtils.suffixFileFilter(filepattern),
                         FileFilterUtils.trueFileFilter) map { 
