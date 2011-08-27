@@ -62,7 +62,8 @@ trait ExcelHelper {
 object OfficeHelpers extends ExcelHelper { 
   case class ParsedWord(source: String, wordNumber: Int, word: String) 
   
-  val WordNrSourceRegex = "^(\\d*)[- ](.+)$".r
+  val WordNrSourceRegex = "^(\\d+)[- ](.+)$".r
+  val NumberRegex = "(\\d+)\\.0".r
   def readItemsXls(fileName: String) =  {
     val workbook = readExcelFile(fileName)
     val sheet = workbook getSheetAt 0 
@@ -72,8 +73,9 @@ object OfficeHelpers extends ExcelHelper {
     0 until rows flatMap { rowNr => safelyNullable(sheet getRow rowNr) } flatMap {
       row => { 
         val (cell0, cell1, cell2) = (row getCell 0, row getCell 1, row getCell 2)
-
+          
         if (cell0 == null || cell1 == null || cell2 == null) {
+          println("Failed: "+ cell0 + " " + cell1 + " " + cell2)
           None
         } else {
           val wordId = readCellValue(cell0)
@@ -85,7 +87,13 @@ object OfficeHelpers extends ExcelHelper {
               val number = if (numberString isEmpty) 0 else Integer parseInt numberString 
               Some((number, source))
             }
-            case _ => None
+            case NumberRegex(number) => {
+              Some((Integer parseInt number, "test"))
+            }
+            case x => {
+              println("Failed: " + x + " " + wordId + " " + word)
+              None
+            }
           }) map { 
             case (wordNumber, source) => ParsedWord(source, wordNumber, word)
           }
@@ -107,9 +115,10 @@ object OfficeHelpers extends ExcelHelper {
     res flatMap { case (groupName, rest) => findWords(groupName, rest) }
   }
   
-  val lookupwordLineRegex = "^\\s*Opslagsord.*?:(.*)$".r
-  val wordRegex = "^(.*)\\s+(\\d+)\\s*".r
-
+  val lookupwordLineRegex = "^\\s*[Oo]pslagsord.*?:(.*)$".r
+  val wordsRegex = "^((?:\\s*[^0-9]+\\s+[0-9]+\\s*)+)$".r
+  val simpleWordRegex = "\\s*([^0-9]+)\\s+([0-9]+)\\s*".r
+  
   def readDocFile(fileName: String) = {
     val docFile = new WordExtractor(new FileInputStream(fileName))
     findGroupName(docFile.getParagraphText toList)
@@ -120,10 +129,22 @@ object OfficeHelpers extends ExcelHelper {
     val res = rest findFirst { 
       case lookupwordLineRegex(words) => 
         Some((words split "," toList) map (_.trim) flatMap { 
-          case wordRegex(word, number) => Some((word, Integer parseInt number))
-          case o => None
+          case wordsRegex(str) => 
+            simpleWordRegex.findAllIn(str).matchData map { 
+              m => {
+                (m.group(1) -> (Integer parseInt m.group(2)))
+              }
+            } toList
+          case o => {
+            println("Failed recogninzing: " + o)
+            List()
+          }
         })
-      case _ => None
+      case o => 
+        if (o.trim.nonEmpty) { 
+          println("Failed with " + o)
+        }
+        None
     }
 
     res flatMap { case (words, rest) => findGroupText(groupName, words, rest) }
@@ -138,7 +159,7 @@ object OfficeHelpers extends ExcelHelper {
     
     res flatMap { 
       case (groupTextStart, rest) => 
-        val groupText = groupTextStart +: (rest takeWhile { a => !a.isEmpty && !a.startsWith("Tvivlsspørgsmål:") } )
+        val groupText = groupTextStart +: (rest takeWhile { a => !a.matches("^.*(Tvivls.*|[Dd]atabasetekster).*:.*$") })
         Some(DocFileOutput(groupName, words, groupText))
     }
   }
@@ -160,10 +181,7 @@ object ExtractItems extends BaseImporter {
     Model.obj.delete(SynonymGroup.query.fetchKeys)
     Model.obj.delete(Synonym.query.fetchKeys)
 
-    val items = OfficeHelpers.readItemsXls(fileName) filterNot (
-      Map("jysk ordbog" -> true, "bormholm ordbog" -> true, 
-          "ømålsordbog" -> true, "torben olsen" -> true) contains _.source
-    )
+    val items = OfficeHelpers.readItemsXls(fileName) 
     val itemsMap: HashMap[Int, List[ParsedWord]] = new HashMap[Int, List[ParsedWord]]()
     
     items foreach {item => 
@@ -175,8 +193,38 @@ object ExtractItems extends BaseImporter {
 
     var sgId: Long = 1
     var synId: Long = 1
-    val synsMap = new HashMap[String, Boolean]
+    
+    val goodSources = Map("aarsdale" -> "aarsdale",
+                          "alslev" -> "alslev",
+                          "bale" -> "bale",
+                          "kappel" -> "kappel",
+                          "lemvig" -> "lemvig",
+                          "melløse" -> "melløse",
+                          "nørremølle" -> "nørremølle",
+                          "tvismark" -> "nørremølle",
+                          "nygård" -> "nygård",
+                          "ørslev" -> "ørslev",
+                          "ørsted" -> "ørsted",
+                          "0xholm" -> "oxholm",
+                          "oxholm" -> "oxholm",
+                          "rær" -> "rær",
+                          "serup" -> "serup",
+                          "sømølle" -> "sø",
+                          "sø" -> "sø",
+                          "thuesbøl" -> "thuesbøl",
+                          "vestfyn" -> "ubberup",
+                          "ubberup" -> "ubberup",
+                          "ubberupøresø" -> "ubberup",
+                          "udby" -> "udby",
+                          "udstrup" -> "udstrup",
+                          "stevns" -> "varpelev",
+                          "varpelev" -> "varpelev",
+                          "vejringe" -> "vejringe",
+                          "vennebjerg" -> "vennebjerg")
 
+    val millTypes = List("vind_vandmøller", "hollænder", "stubmølle", "vandmølle", "vindmøller")
+
+    val badSources = List("test", "bornholm ordbog", "indeks", "torben olsen", "ømålsordbog", "jysk ordbog")    
     val syns: List[BaseRow[_]] = files flatMap { 
       file => 
         (OfficeHelpers readDocFile file.getPath) map { 
@@ -184,12 +232,15 @@ object ExtractItems extends BaseImporter {
             case (word, number) =>
               if (itemsMap contains number) {
                 val _words = itemsMap(number)
-                val sources = _words map { _ source } distinct
                 
                 val synonymGroup = SynonymGroup()
                 synonymGroup.canonicalWord = word
                 synonymGroup.number = number
                 synonymGroup.id = sgId
+
+                val millType = millTypes filter { t => file.getPath matches ("^.*/" + t + "/.*$") } head
+
+                synonymGroup.millType = millType
                 sgId += 1
                 val wordMap: HashMap[String, List[String]] = new HashMap
                 
@@ -202,16 +253,21 @@ object ExtractItems extends BaseImporter {
 
                 val synonyms = wordMap flatMap { 
                   case (k, v) => {
-                    if (synsMap getOrElse (k.toLowerCase, true)) {
-                      synsMap(k.toLowerCase) = false
+                    val sources = (v filterNot { badSources contains _ } distinct) map { 
+                      goodSources(_) 
+                    }
+
+                    if (sources isEmpty) { 
+                      None 
+                    } else { 
                       val syn = new Synonym
+
                       syn.word = k
-                      syn.sources = v
+                      syn.sources = sources
                       syn.id = synId
+                      syn.millType = millType
                       synId += 1
                       Some(syn)
-                    } else {
-                      None
                     }
                   }
                 } toList
@@ -231,6 +287,7 @@ object ExtractItems extends BaseImporter {
                 
                 synonymGroup :: synonyms
               } else {
+                println("Failing with " + word + " " +number)
                 List[Synonym]()
               }
           } 
@@ -296,31 +353,41 @@ object ExtractItems extends BaseImporter {
       }
     }
       
+    val crossInterests = Map(
+      "hollænder" -> List("hollænder", "vindmøller", "vind_vandmøller"),
+      "stubmølle" -> List("stubmølle", "vindmøller", "vind_vandmøller"),
+      "vandmølle" -> List("vandmølle", "vind_vandmøller"),
+      "vindmøller" -> List("vindmøller", "vind_vandmøller"),
+      "vind_vandmøller" -> List("vindmøller", "vandmølle", "vind_vandmøller"))
+      
     val groups = synonymGroups map { 
       case sg => { 
         val text = (sg text) toLowerCase
-
-        val intervals = (synonymWords flatMap { 
+        
+        val intervals = (synonymWords filter {
+          case (sg_, _) => crossInterests(sg.millType) contains sg_.millType
+        } flatMap { 
           case (synonym, regex) => 
             (regex findAllIn text matchData) map { 
-              mtch => (synonym, mtch)} toList
+              mtch => (synonym, mtch)
+            } toList
         } foldLeft (List[(SynonymGroup, MatchData)]())) { merge(_, _) } sortBy { 
           _._2.start 
         } reverse
 
-        val resText = (intervals foldLeft (sg text)) { 
-          (text, synmd) => synmd match {
-            case (syngroup, md) => 
-              if (syngroup.getKey == sg.getKey) { 
-                text.substring(0, md.start) + "<span class=\"ownlink\">" + text.substring(md.start, md.end) + 
-                "</span>" + text.substring(md.end)
-              } else {
-                text.substring(0, md.start) + 
-                ("<a class=\"interlink\" href=\"/ordbog/nummer/?nummer=%d\">%s</a>" format (
-                  syngroup id, text.substring(md.start, md.end))) + text.substring(md.end)
-              }
+          val resText = (intervals foldLeft (sg text)) { 
+            (text, synmd) => synmd match {
+              case (syngroup, md) => 
+                if (syngroup.getKey == sg.getKey) { 
+                  text.substring(0, md.start) + "<span class=\"ownlink\">" + text.substring(md.start, md.end) + 
+                  "</span>" + text.substring(md.end)
+                } else {
+                  text.substring(0, md.start) + 
+                  ("<a class=\"interlink\" href=\"/ordbog/nummer/?nummer=%d\">%s</a>" format (
+                    syngroup id, text.substring(md.start, md.end))) + text.substring(md.end)
+                }
+            }
           }
-        }
 
         sg.text = resText
         sg
@@ -613,8 +680,8 @@ object ReadSourceData extends FileUploader with BaseImporter {
           name match { 
             case regexp(source) => 
               val translations = Map(
-                "ubberupøresø" -> "ubberup",
-                "sømølle" -> "sø")
+                "ubberupøresø" -> "ubberup", 
+                "sømølle" -> "sø")           
               val s = map(translations getOrElse (source, source) )
 
               val url = getUploadUrl("/blobs/uploadSourcePdf")

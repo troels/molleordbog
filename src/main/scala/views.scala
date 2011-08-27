@@ -21,7 +21,7 @@ object Utils {
 
 object MolleOrdbogMappings extends BaseMapping {
   lazy val mappings: Mapping = 
-    (FrontpageMapping() ==> Views.search) |
+    (FrontpageMapping() ==> Views.frontpage) |
     ("soeg" ==> Views.search) |
     ("visuel" / (
       (FrontpageMapping() ==> Views.visualStart) |
@@ -92,16 +92,51 @@ object Views {
       BlobResponse((req originalRequest) get, mimeType, blobKey, Some(fileName))
   }
 
+  val millNames = Map(
+    "hollænder" -> "Hollændermølle",
+    "stubmølle" -> "Stubmølle",
+    "vandmølle" -> "Vandmølle",
+    "vindmøller" -> "Vindmølle",
+    "vind_vandmøller" -> "Vind/vandmølle")
+  
+  val reverseMillNames = millNames map { case (k, v) => (v -> k) } toMap
+
   def lookup: View = withArg("ord") { 
     (req, word) => 
-      Synonym findSynonym word match {
-        case None => new RedirectResponse("/?ord=" + (URLEncoder encode (word, "UTF-8")))
-        case Some(syn) => TemplateResponse(
+      val (realWord: String, millType: String) = 
+        if (word contains " - ") { 
+          val parts = word split (" - ", 2) map { _.trim.toLowerCase }
+          (parts(0) -> parts(1))
+        } else {
+          ((word trim) -> "")
+        }
+    
+      val synonyms = Synonym findSynonyms realWord 
+    
+      if (synonyms isEmpty) { 
+        RedirectResponse("/soeg/?ord=" + (URLEncoder encode (word, "UTF-8")))
+      } else {
+        val syn = 
+          if (millType.contains("vand") && millType.contains("vind") && (synonyms.filter { _.millType == "vind_vandmøller" } nonEmpty)) { 
+            synonyms filter { _.millType == "vind_vandmøller" } head
+          } else if (millType.contains("vand") && (synonyms filter { _.millType == "vandmølle" } nonEmpty)) {
+            synonyms filter { _.millType == "vandmølle" } head
+          } else if (millType.contains("vind") && (synonyms filter { _.millType == "vindmøller" } nonEmpty)) {
+            synonyms filter { _.millType == "vindmøller" } head
+          } else if (millType.contains("hollænder") && (synonyms filter { _.millType == "hollænder" } nonEmpty)) {
+            synonyms filter { _.millType == "hollænder" } head
+          } else if (millType.contains("stubmølle") && (synonyms filter { _.millType == "stubmølle" } nonEmpty)) {
+            synonyms filter { _.millType == "stubmølle" } head
+          } else {
+            synonyms head
+          }
+        TemplateResponse(
           "main.article", 
-          "word" -> word,
+          "word" -> realWord,
           "synonym" -> syn, 
           "article" -> (syn getSynonymGroup))
       }
+
   }
   
   def lookupSynonymgroup: View = withArg("nummer") { 
@@ -116,9 +151,9 @@ object Views {
 
   def autocomplete: View = withArg("term") {
     (req, word) => 
-      val synonyms = (Synonym findWithPrefix word toList) map (_ word) take 10
+      val synonyms = (Synonym findWithPrefix word toList) map { syn => ("%s - %s" format (syn.word, millNames getOrElse (syn.millType, syn.millType))) } 
       
-      JSONResponse(synonyms)
+      JSONResponse(synonyms take 10)
   }
   
   def uploadVisualUrl: View = {
@@ -309,5 +344,9 @@ object Views {
       val page = (req getRequestAttribute "page").get.asInstanceOf[Page]
       TemplateResponse("main.cms", "page" -> page)
     }
+  }
+
+  def frontpage: View = {
+    req => TemplateResponse("main.frontpage")
   }
 }

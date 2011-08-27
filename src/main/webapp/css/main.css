@@ -179,6 +179,9 @@ li.nav-marked {
     background: #C3B68C !important;
 }
 
+.ui-accordion .ui-accordion-content { 
+    padding: 0;
+}
 .ui-corner-all {
     border-bottom-right-radius: 0px !important;
     border-bottom-left-radius: 0px !important;
@@ -193,4 +196,16 @@ li.nav-marked {
 .ui-corner-bottom { 
     border-bottom-right-radius: 0px !important;
     border-bottom-left-radius: 0px !important;
+}
+
+.visual-subject { 
+    padding: 8px 20px;
+    cursor: pointer;
+}
+
+.visual-subject:hover { 
+    background-color: #74A6D7 !important;
+}
+.visual-subject.even { 
+    background-color: #C3B68C;
 }

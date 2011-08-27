@@ -79,7 +79,7 @@ class SerializationTest extends FunSuite with ShouldMatchers with BeforeAndAfter
 
     pic.subjects = List(Subject("hello", List(new Key(classOf[SynonymGroup], "hello")) toArray)) toArray
     
-    pic.excisions = List(Excision(0,0,0,0, new Key(classOf[VisualSearchPicture], "hello"))) toArray
+    pic.excisions = null
 
     val key = pic.save()
     

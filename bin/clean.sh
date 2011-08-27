@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 
 
-curl "http://molleguiden.appspot.com/blobs/cleanemout/"
+while true; do curl "http://molleguiden.appspot.com/blobs/cleanemout/" & sleep 5; done

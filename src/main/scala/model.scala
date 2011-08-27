@@ -102,7 +102,10 @@ object Synonym extends BaseRowObj[Synonym] {
            limit 50)
   
   def findSynonym(word: String): Option[Synonym] = 
-    (query filter ("word = ", word) toList) headOption
+    findSynonyms(word) headOption
+
+  def findSynonyms(word: String): List[Synonym] = 
+    query filter ("word = ", word) toList
 
   def apply(): Synonym = new Synonym
 }
@@ -115,6 +118,7 @@ class Synonym extends BaseRow[Synonym] with java.io.Serializable {
 
   var synonymGroup: Key[SynonymGroup] = _
   var artificial: Boolean = _
+  @Indexed var millType: String = _
   
   override def toString = "%s - %s" format (word, sources mkString ", ")
 
@@ -143,6 +147,8 @@ class SynonymGroup extends BaseRow[SynonymGroup] with java.io.Serializable {
 
   var pictureKey: String = _
   var pictureUrl: String = _
+  
+  @Indexed var millType: String = _
 
   override def toString = "%d - %s" format (number, canonicalWord)
 
