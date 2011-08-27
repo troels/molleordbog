@@ -172,6 +172,7 @@ def search seed={""}
     h2 | Ordsøgning
     form(method="GET" action="/ordbog/opslag/" id="soegeform")
      input(type="text" name="ord" value={seed} id="soegefelt")
+      margin-left: 10px; width: 400px;
      - jscript
       script: 
        | $("#soegefelt").autocomplete({"{"}'source': '/ordbog/autocomplete/',
@@ -184,6 +185,7 @@ def search seed={""}
     margin-top: 40px;
     h2 | Visuel søgning
     - main_mill
+
 def mill_list lst
  + for data in lst
   #div
