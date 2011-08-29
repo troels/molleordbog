@@ -112,7 +112,7 @@ object Views {
         }
     
       val synonyms = Synonym findSynonyms realWord 
-    
+      
       if (synonyms isEmpty) { 
         RedirectResponse("/soeg/?ord=" + (URLEncoder encode (word, "UTF-8")))
       } else {
@@ -151,9 +151,13 @@ object Views {
 
   def autocomplete: View = withArg("term") {
     (req, word) => 
-      val synonyms = (Synonym findWithPrefix word toList) map { syn => ("%s - %s" format (syn.word, millNames getOrElse (syn.millType, syn.millType))) } 
+      val synonyms = Synonym findWithPrefix word iterator
+      val exact = Synonym findSynonyms word
       
-      JSONResponse(synonyms take 10)
+      val total = exact ++ synonyms.toList
+      val all = total map { syn => ("%s - %s" format (syn.word, millNames getOrElse (syn.millType, syn.millType))) }
+      
+      JSONResponse(all take 20 distinct)
   }
   
   def uploadVisualUrl: View = {

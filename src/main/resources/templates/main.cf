@@ -120,20 +120,21 @@ def synonyms synonyms word={""}
       span
        margin-left: 2px; font-weight: bold; 
        | {synonym.word}
-     + for source in synonym.sources
-      + if for_loop_index_source < 3 or word = synonym.word
-       span
-        margin: 0 2px;
-        a(href={"/kilder/viskilde/" ++ source ++ "/"}) | { source }
-      + else
-       span
-        margin: 0 2px; display: none;
-        a(href={"/kilder/viskilde/" ++ source ++ "/"}) | { source }
-      |  
-     + if synonym.sources.size > 3 and word != synonym.word
-      - jslink 
-       body: | Vis alle
-       click: | $(this).parent().find('span').show(); $(this).hide(); 
+     + if synonym.sources 
+      + for source in synonym.sources
+       + if for_loop_index_source < 3 or word = synonym.word
+        span
+         margin: 0 2px;
+         a(href={"/kilder/viskilde/" ++ source ++ "/"}) | { source }
+       + else
+        span
+         margin: 0 2px; display: none;
+         a(href={"/kilder/viskilde/" ++ source ++ "/"}) | { source }
+       |  
+      + if synonym.sources and  synonym.sources.size > 3 and word != synonym.word
+       - jslink 
+        body: | Vis alle
+        click: | $(this).parent().find('span').show(); $(this).hide(); 
    
 def article article word={""}
  - main 
@@ -331,6 +332,7 @@ def sources sources
        float: right;
        | Download pdf
    - clear
+
 def show_source source
  -main
   body: 
@@ -375,9 +377,6 @@ def cms page
 def frontpage
  - main
   body:
-   h1 
-    text-align: center; margin: 25px 0 ;
-    | Velkommen!
    #text
     float: left; width: 470px;
     | <div><p dir="ltr" style="text-align:left;margin-bottom:10pt"><span xml:lang="da-DK" lang="da-DK">Velkommen til M&#248;lleordbog.dk udarbejdet af &#216;havsmuseet Faaborg. Vi h&#229;ber at du finder hvad du leder efter &#150; eller bare finder det interessant, fordi du kom forbi. Vi tilbyder her en teknisk og sproglig indsigt i de gamle danske vind- og vandm&#248;llers mange dele og funktioner. Ordbogens grundlag er 21 sp&#248;rgelister besvaret af m&#248;llere i midten af 1900-tallet. &#160;</span></p></div>

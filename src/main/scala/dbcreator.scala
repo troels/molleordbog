@@ -257,18 +257,14 @@ object ExtractItems extends BaseImporter {
                       goodSources(_) 
                     }
 
-                    if (sources isEmpty) { 
-                      None 
-                    } else { 
-                      val syn = new Synonym
+                    val syn = new Synonym
 
-                      syn.word = k
-                      syn.sources = sources
-                      syn.id = synId
-                      syn.millType = millType
-                      synId += 1
-                      Some(syn)
-                    }
+                    syn.word = k
+                    syn.sources = sources
+                    syn.id = synId
+                    syn.millType = millType
+                    synId += 1
+                    Some(syn)
                   }
                 } toList
                 
@@ -401,6 +397,9 @@ object ExtractItems extends BaseImporter {
 trait FileUploader { 
   val host = "localhost"
   val port = 8080
+
+  // val host = "molleguiden.appspot.com"
+  // val port = 80
 
   def client = new DefaultHttpClient()
 
