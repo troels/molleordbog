@@ -2,4 +2,5 @@
   <application>molleguiden</application>
   <version>2</version>
   <precompilation-enabled>true</precompilation-enabled>
+  <threadsafe>true</threadsafe>
 </appengine-web-app>

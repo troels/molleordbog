@@ -61,7 +61,7 @@
 
      var excisionZIndex = 1000;
      ExcisionHolder.prototype = {
-         addExcision: function (x, y, width, height, destination, name) {
+         addExcision: function (x, y, width, height, destination, name, title) {
              function opacitySetter(opacity) {
                  return function (e) {
                      $(this).children("div").fadeTo(0, opacity);
@@ -85,12 +85,14 @@
                             cursor: "pointer",
                             "z-index": excisionZIndex--
                         })
-                    .html($("<div/>").css({
-                                              "width": "100%",
-                                              "height": "100%",
-                                              "background-color": "#74A6D7",
-                                              "opacity": lightOpacity
-                                          }))
+                    .html($("<div/>")
+                          .attr("title", title)
+                          .css({
+                                   "width": "100%",
+                                   "height": "100%",
+                                   "background-color": "#74A6D7",
+                                   "opacity": lightOpacity
+                               }))
                  .mouseover(opacitySetter(darkOpacity))
                  .hover(opacitySetter(darkOpacity), opacitySetter(lightOpacity))
                  .click(function (e) {

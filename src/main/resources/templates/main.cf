@@ -19,9 +19,7 @@ def header
     img(src="/img/molle_topbar.jpg" alt="forside")
      margin-bottom: -3px;
    #nav
-    + for menuitem in [{"url": "/soeg/", "name": "Søgning", "children": [
-                             {"url": "/soeg/", "name": "Ordsøgning" },
-                             {"url": "/visuel/", "name": "Visuel søgning" }]}, 
+    + for menuitem in [{"url": "/soeg/", "name": "Søgning", "children": []},
                        {"url": "/kilder/oversigt/", "name": "Om kilderne", "children": [
                              {"url": "/cms/kildemateriale/sekundære kilder/sekundære_kilder/", 
                               "name": "De sekundære kilder" },
@@ -74,7 +72,7 @@ def main
 
    - js  {"//ajax.googleapis.com/ajax/libs/jquery/1.6.1/jquery.min.js"}
    - js  {"//ajax.googleapis.com/ajax/libs/jqueryui/1.8.14/jquery-ui.min.js"}
-   - js  {"/js/underscore-min.js"}
+   - js  {"/jwplayer/jwplayer.js"}
    - js  {"/js/main.js"}
   body
    - header
@@ -110,60 +108,76 @@ def synonyms synonyms word={""}
   margin: 10px; 
   ul
    + for synonym in synonyms
-    li 
-     list-style-type: none;
-     + if word = synonym.word
-      span
-       margin-left: 2px; font-weight: bold; color: red;
-       | {synonym.word}
-     + else
-      span
-       margin-left: 2px; font-weight: bold; 
-       | {synonym.word}
-     + if synonym.sources 
-      + for source in synonym.sources
-       + if for_loop_index_source < 3 or word = synonym.word
-        span
-         margin: 0 2px;
-         a(href={"/kilder/viskilde/" ++ source ++ "/"}) | { source }
-       + else
-        span
-         margin: 0 2px; display: none;
-         a(href={"/kilder/viskilde/" ++ source ++ "/"}) | { source }
-       |  
-      + if synonym.sources and  synonym.sources.size > 3 and word != synonym.word
-       - jslink 
-        body: | Vis alle
-        click: | $(this).parent().find('span').show(); $(this).hide(); 
+    + if synonym.sources
+     li 
+      list-style-type: none;
+      + if word = synonym.word
+       span
+        margin-left: 2px; font-weight: bold; color: red;
+        | {synonym.word}
+      + else
+       span
+        margin-left: 2px; font-weight: bold; 
+        | {synonym.word}
+      + if synonym.sources 
+       + for source in synonym.sources
+        + if for_loop_index_source < 3 or word = synonym.word
+         span
+          margin: 0 2px;
+          a(href={"/kilder/viskilde/" ++ source ++ "/"}) | { source }
+        + else
+         span
+          margin: 0 2px; display: none;
+          a(href={"/kilder/viskilde/" ++ source ++ "/"}) | { source }
+        |  
+       + if synonym.sources and  synonym.sources.size > 3 and word != synonym.word
+        - jslink 
+         body: | Vis&nbsp;alle
+         click: | $(this).parent().find('span').show(); $(this).hide(); 
    
-def article article word={""}
+def article article film word={""}
  - main 
   body: 
    #article
     h1 
-     text-align: center; text-transform: capitalize;
-     | { article.canonicalWord }
-    #article-texts
-     float: left; width: 310px;
-     #milltype
-      margin: 10px;
-      span
-       font-weight: bold; margin-right: 5px;
-       | Mølletype: 
+     text-align: center; text-transform: capitalize; margin-bottom: 0;
+     | { article.canonicalWord } { film }
+    div
+     text-align: center; margin-bottom: 15px; 
+     | på
+     span
+      font-weight: bold;
       | { {
       "hollænder": "Hollændermølle",
       "stubmølle": "Stubmølle",
       "vandmølle": "Vandmølle",
       "vindmøller": "Vindmølle",
-      "vind_vandmøller": "Vind og vandmøller" }[article.millType] } 
-     - synonyms {article.getSynonyms} {word}
+      "vind_vandmøller": "Vind og vandmøller" }[article.millType] }
+
+    #article-texts
+     float: left; width: 310px;
+     #synonyms
+      - synonyms {article.getSynonyms} {word}
      #article-text
       margin: 10px;
       | {e article.text}
-    #article-picture
+
+    #article-media
      float: left; width: 600px;
-     + if article.pictureUrl
-      img(src={article.pictureUrl})
+     +if film
+      #tabs
+       #illustrationtab.tab(onclick="$('#film').hide();$('#article-picture').show();")
+         | Se illustration
+       #filmtab.tab(onclick="$('#film').show();$('#article-picture').hide();")
+         | Se animation
+     #article-picture
+      + if article.pictureUrl
+       img(src={article.pictureUrl})
+     + if film
+      #film
+       display: none; margin-left: 23px; margin-top: 40px;
+       #filminner
+       - filmplayer {"filminner"} {"/films/" ++ film} {550} {400} 
    - clear
 
 def search seed={""}
@@ -293,14 +307,9 @@ def millbrowser_ajax vsp subjects
       |                             { excision.y } * img.height() / { vsp.height } , 
       |                             { excision.width } * img.width() / { vsp.width } , 
       |                             { excision.height } * img.height() / { vsp.height }, 
-      + if excision.picture
-       |                            "{ "/visuel/browse/" ++ excision.picture.getName ++ "/"}",
-      + else
-       |                            "",
-      + if excision.name
-       |                            "{ excision.name }"
-      + else
-       |                            ""
+      |                            "{ if excision.picture ("/visuel/browse/" ++ excision.picture.getName ++ "/") ""}",
+      |                            "{ if excision.name excision.name ""}",
+      |                            "{ if excision.title excision.title "" }"
       | );
     | {"}"}
     | if (img.height() > 0) addExcisions(); else img.load(addExcisions);
@@ -390,3 +399,19 @@ def clear
  div
   clear: both;
 
+def filmplayer id fn width height
+ - jscript
+  script:
+   | jwplayer("{id}").setup({"{"}
+   |   flashplayer: "/jwplayer/player.swf",
+   |   file: "{fn}",
+   |   height: {height},
+   |   width: {width}
+   |   {"}"});
+
+def animations
+ - main
+  body: 
+   h1 | hello
+   #testplayer
+   - player {"testplayer"} {"/films/ani_web_orbit.flv"} {400} {600}

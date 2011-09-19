@@ -257,14 +257,14 @@ object ExtractItems extends BaseImporter {
                       goodSources(_) 
                     }
 
-                    val syn = new Synonym
+                      val syn = new Synonym
 
-                    syn.word = k
-                    syn.sources = sources
-                    syn.id = synId
-                    syn.millType = millType
-                    synId += 1
-                    Some(syn)
+                      syn.word = k
+                      syn.sources = sources
+                      syn.id = synId
+                      syn.millType = millType
+                      synId += 1
+                      Some(syn)
                   }
                 } toList
                 
@@ -322,8 +322,9 @@ object ExtractItems extends BaseImporter {
         } else if (exactWords contains word) { 
           Some((sg, new Regex("\\b" + (Pattern quote word) + "\\b")))
         } else if ((errorneousWords contains word) || (word length) <= 4 ) { 
+          val ends = if (word == "ligger") endings.tail else endings
           Some((sg, new Regex(
-            "\\b" + (Pattern quote word) + "("+ (endings map { Pattern quote _ }  mkString "|") + ")\\b")))
+            "\\b" + (Pattern quote word) + "("+ (ends map { Pattern quote _ }  mkString "|") + ")\\b")))
         } else {
           val ending = endings filter { sg.canonicalWord.endsWith(_) } sortBy { _.length } reverse
           val word = if (ending isEmpty) sg.canonicalWord else sg.canonicalWord.substring(0, sg.canonicalWord.length - ending(0).length)
@@ -364,8 +365,8 @@ object ExtractItems extends BaseImporter {
           case (sg_, _) => crossInterests(sg.millType) contains sg_.millType
         } flatMap { 
           case (synonym, regex) => 
-            (regex findAllIn text matchData) map { 
-              mtch => (synonym, mtch)
+            (regex findAllIn text matchData) flatMap { 
+              mtch => if (mtch.matched == "ligger") None else Some((synonym, mtch))
             } toList
         } foldLeft (List[(SynonymGroup, MatchData)]())) { merge(_, _) } sortBy { 
           _._2.start 
@@ -553,13 +554,14 @@ object VisualSearchParser extends ExcelHelper with FileUploader with BaseImporte
     val fields = new HashMap[String, VisualSearchPicture]
     Model.obj.delete(VisualSearchPicture.query.fetchKeys)
 
-    (1 until rows) flatMap { rowNr => safelyNullable(sheet getRow rowNr) } foreach { 
+    (1 until rows + 1) flatMap { rowNr => safelyNullable(sheet getRow rowNr) } foreach { 
       row => 
-        val (pictureName, udsnitsId, xLeft, yUp, xRight, yDown, pointingAtPicture, subject, words) = 
+        val (pictureName, udsnitsId, xLeft, yUp, xRight, yDown, pointingAtPicture, subject, title, words) = 
           (readCellValue(row getCell 0), readCellValue(row getCell 1), readCellValue(row getCell 2), 
            readCellValue(row getCell 3), readCellValue(row getCell 4), readCellValue(row getCell 5), 
-           readCellValue(row getCell 6), readCellValue(row getCell 7), readCellValue(row getCell 8))
-
+           readCellValue(row getCell 6), readCellValue(row getCell 7), readCellValue(row getCell 8), 
+           readCellValue(row getCell 9))
+          
         def parseWords(words: String): List[(Int, Int)] = {
           if (words == null) return List()
 
@@ -615,8 +617,8 @@ object VisualSearchParser extends ExcelHelper with FileUploader with BaseImporte
               null
             else
               new Key[VisualSearchPicture](classOf[VisualSearchPicture], pointingAtPicture)
-
-          val excision = new Excision(x, y, width, height, key, subject)
+          
+          val excision = new Excision(x, y, width, height, key, subject, title)
 
           vsp.excisions = (if(vsp.excisions == null) List(excision) else (excision :: (vsp.excisions toList))) toArray
         } 

@@ -209,3 +209,19 @@ li.nav-marked {
 .visual-subject.even { 
     background-color: #C3B68C;
 }
+
+#tabs { 
+    padding: 20px;
+}
+
+#tabs .tab {
+    background: #C3B68C;
+    float: left;
+    margin: 2px;
+    padding: 10px 90px;
+    cursor: pointer;
+}
+
+#tabs .tab:hover { 
+    background: #74A6D7;
+}

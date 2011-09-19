@@ -14,6 +14,7 @@ import scala.collection.JavaConversions._
 import com.google.appengine.api.blobstore.{ BlobstoreServiceFactory, BlobKey, BlobInfoFactory }
 
 import java.net.{URLEncoder, URLDecoder}
+import com.google.appengine.api.memcache._
 
 object Utils { 
   lazy val collator = Collator.getInstance(new Locale("da", "dk"))
@@ -49,7 +50,9 @@ object MolleOrdbogMappings extends BaseMapping {
    ("kilder" / ( 
      ("oversigt" ==> Views.allSources) |
      ("viskilde" / MapperWord("id")) ==> Views.showSource)) |
-   ("cms" / CMSMapping)
+   ("cms" / CMSMapping) |
+   ("cleanmemcache" ==> Views.cleanMemcache) | 
+   ("animationer" ==> Views.animations) 
 }
 
 object CMSMapping extends Mapping {
@@ -65,6 +68,8 @@ object CMSMapping extends Mapping {
 
 object Views { 
   type View = Request => Response
+
+  val films = Map(414122 -> "ani_web_detail_balancebojle.flv")
 
   def blobstoreService = BlobstoreServiceFactory getBlobstoreService
   def withArg(arg: String)(f: (Request, String) => Response)(req: Request): Response =
@@ -89,7 +94,7 @@ object Views {
       val mimeType = (blobInfo getContentType)
       val fileName = (blobInfo getFilename)
 
-      BlobResponse((req originalRequest) get, mimeType, blobKey, Some(fileName))
+      BlobResponse(mimeType, blobKey, Some(fileName))
   }
 
   val millNames = Map(
@@ -130,11 +135,18 @@ object Views {
           } else {
             synonyms head
           }
+
+        val group = syn getSynonymGroup
+        
+        val film = films get group.number
+        
+        println(group.number)
         TemplateResponse(
           "main.article", 
           "word" -> realWord,
           "synonym" -> syn, 
-          "article" -> (syn getSynonymGroup))
+          "film" -> film,
+          "article" -> group)
       }
 
   }
@@ -142,9 +154,12 @@ object Views {
   def lookupSynonymgroup: View = withArg("nummer") { 
     (req, number) => 
       val sg = SynonymGroup get (java.lang.Long parseLong number)
+
+    val film = films get sg.number
     
     TemplateResponse(
       "main.article", 
+      "film" -> film,
       "article" -> sg
     )
   }
@@ -275,6 +290,7 @@ object Views {
                           "vandmolle" -> "vandmølle")
                           
   def getVsp(req: Request): VisualSearchPicture = {
+    println(req getRequestAttribute "picture")
     VisualSearchPicture get (
       req getRequestAttribute "picture" map { 
         pic => URLDecoder decode (pic.asInstanceOf[String], "UTF-8")
@@ -352,5 +368,17 @@ object Views {
 
   def frontpage: View = {
     req => TemplateResponse("main.frontpage")
+  }
+
+  def cleanMemcache: View = {
+    req => 
+      val ms = MemcacheServiceFactory getMemcacheService
+      
+      ms.clearAll()
+      TextResponse("All is gone")
+  }
+
+  def animations: View = {
+    req => TemplateResponse("main.animations")
   }
 }
