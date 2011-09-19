@@ -141,7 +141,7 @@ def article article film word={""}
    #article
     h1 
      text-align: center; text-transform: capitalize; margin-bottom: 0;
-     | { article.canonicalWord } { film }
+     | { article.canonicalWord }
     div
      text-align: center; margin-bottom: 15px; 
      | på
@@ -390,7 +390,6 @@ def frontpage
     float: left; width: 470px;
     | <div><p dir="ltr" style="text-align:left;margin-bottom:10pt"><span xml:lang="da-DK" lang="da-DK">Velkommen til M&#248;lleordbog.dk udarbejdet af &#216;havsmuseet Faaborg. Vi h&#229;ber at du finder hvad du leder efter &#150; eller bare finder det interessant, fordi du kom forbi. Vi tilbyder her en teknisk og sproglig indsigt i de gamle danske vind- og vandm&#248;llers mange dele og funktioner. Ordbogens grundlag er 21 sp&#248;rgelister besvaret af m&#248;llere i midten af 1900-tallet. &#160;</span></p></div>
     |    <p dir="ltr" style="text-align:left;margin-bottom:10pt"><span xml:lang="da-DK" lang="da-DK">En lille f&#229;rehistorie</span></p>   <p dir="ltr" style="text-align:left;margin-bottom:10pt"><span style="font-style:italic" xml:lang="da-DK" lang="da-DK">&#8221;En mand havde v&#230;ret p&#229; Albue gr&#230;sslette </span><span xml:lang="da-DK" lang="da-DK">[Lollands vestlige spids]</span><span style="font-style:italic" xml:lang="da-DK" lang="da-DK"> efter sit f&#229;r. Da han n&#229;ede Kappel M&#248;lle kom han i tanke om at han havde et &#230;rinde til m&#248;lleren og da m&#248;llen stod stille med den ene vinge ved jorden, bandt han sit f&#229;r til vingen og gik op p&#229; m&#248;llen for at tr&#230;ffe m&#248;lleren. Mens han nu stod og snakkede med m&#248;lleren blev persen lettet, men m&#248;llen ville ikke g&#229; ret meget. M&#248;lleren undrede sig over at den ikke ville g&#229; og da han kiggede ud, hang f&#229;ret i sit t&#248;jr en alen over jorden, s&#229; fik de travlt med at komme ned og f&#229; vingen trukket tilbage. F&#229;ret blev reddet.&#8221; </span><span xml:lang="da-DK" lang="da-DK">(Kappel M&#248;lle) </span></p>   <p dir="ltr" style="text-align:left;margin-bottom:10pt"/>
-
    img(src="/img/pic_forside.jpg" alt="Skovgaard Mølle")
     width: 400px; height: 533px; float: left; margin-left: 30px;
    - clear 
@@ -412,6 +411,22 @@ def filmplayer id fn width height
 def animations
  - main
   body: 
-   h1 | hello
-   #testplayer
-   - player {"testplayer"} {"/films/ani_web_orbit.flv"} {400} {600}
+    h1
+     text-align: center;
+     | Animationer
+    + for film in [{"film": "ani_web_detail_heleKvaern.flv", "title": "Kværn"},
+                   {"film": "ani_web_detail_hel.flv", "title": "Hel"},
+                   {"film": "ani_web_detail_uText.flv", "title": "Tekst"},
+                   {"film": "ani_web_komplet_rotation.flv", "title": "Komplet rotation"},
+                   {"film": "ani_web_komplet_still.flv", "title": "Komplet stille"},
+                   {"film": "ani_web_orbit.flv", "title": "Orbital"}]
+     .filmcontainer
+      padding: 0 160px; margin: 20px; margin-bottom: 50px;
+      + let id = guid
+        h2 
+         text-align: center;
+         | {film["title"]}
+        div(id={id})
+        - filmplayer {id} {"/films/" ++ film["film"]} {550} {400}
+
+

@@ -69,7 +69,14 @@ object CMSMapping extends Mapping {
 object Views { 
   type View = Request => Response
 
-  val films = Map(414122 -> "ani_web_detail_balancebojle.flv")
+  val films = Map(414122 -> "ani_web_detail_balancebojle.flv",
+                  411010 -> "ani_web_detaiil_spillet.flv",
+                  414004 -> "ani_web_detail_hals.flv",
+                  414040 -> "ani_web_detail_langjern.flv",
+                  414027 -> "ani_web_detail_medbringer.flv",
+                  414014 -> "ani_web_komplet_rotation.flv",
+                  414017 -> "ani_web_komplet_rotation.flv"
+                )
 
   def blobstoreService = BlobstoreServiceFactory getBlobstoreService
   def withArg(arg: String)(f: (Request, String) => Response)(req: Request): Response =
