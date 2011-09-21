@@ -396,16 +396,16 @@ object ExtractItems extends BaseImporter {
 }
 
 trait FileUploader { 
-  val host = "localhost"
-  val port = 8080
+  // val host = "localhost"
+  // val port = 8080
 
-  // val host = "molleguiden.appspot.com"
-  // val port = 80
+  val host = "molleguiden.appspot.com"
+  val port = 80
 
   def client = new DefaultHttpClient()
 
   def getUploadUrl(url: String): String =  {
-    val get = new HttpGet("http://%s:%d%s" format (host, port, url))
+    val get = new HttpPost("http://%s:%d%s" format (host, port, url))
     
     val c = client
     try {

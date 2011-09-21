@@ -19,7 +19,7 @@ def header
     img(src="/img/molle_topbar.jpg" alt="forside")
      margin-bottom: -3px;
    #nav
-    + for menuitem in [{"url": "/soeg/", "name": "Søgning", "children": []},
+    + for menuitem in [{"url": "/soeg/", "name": "Søg i mølleordbogen", "children": []},
                        {"url": "/kilder/oversigt/", "name": "Om kilderne", "children": [
                              {"url": "/cms/kildemateriale/sekundære kilder/sekundære_kilder/", 
                               "name": "De sekundære kilder" },
@@ -184,8 +184,17 @@ def search seed={""}
  - main
   body: 
    #searchfield
-    h2 | Ordsøgning
+    h2 
+     padding-left: 10px; margin-bottom: 15px;
+     | Ordsøgning
     form(method="GET" action="/ordbog/opslag/" id="soegeform")
+     div
+      margin-left: 10px; margin-bottom: 10px; font-size: 90%;
+      | Søg efter ord eller udtryk.&nbsp;&nbsp;Søgefeltet vil prøve at autokomplementere.<br/>
+      + if seed != ""
+       span
+        color: red;
+        | Udtrykket {seed} fandtes desværre ikke i ordbogen. Prøv et andet, måske lignende ord.
      input(type="text" name="ord" value={seed} id="soegefelt")
       margin-left: 10px; width: 400px;
      - jscript
@@ -198,8 +207,15 @@ def search seed={""}
      input(type="submit" name="Søg" value="Søg")
    #visual
     margin-top: 40px;
-    h2 | Visuel søgning
-    - main_mill
+    h2
+     margin: 0;
+     | Visuel søgning
+    div
+     margin-left: 15px; margin-top: 10px; margin-bottom: 20px; font-size: 90%;
+     | Klik på en mølle for at vide mere om den og dens dele.
+    - clear
+    div 
+     - main_mill
 
 def mill_list lst
  + for data in lst
@@ -414,12 +430,12 @@ def animations
     h1
      text-align: center;
      | Animationer
-    + for film in [{"film": "ani_web_detail_heleKvaern.flv", "title": "Kværn"},
-                   {"film": "ani_web_detail_hel.flv", "title": "Hel"},
-                   {"film": "ani_web_detail_uText.flv", "title": "Tekst"},
-                   {"film": "ani_web_komplet_rotation.flv", "title": "Komplet rotation"},
-                   {"film": "ani_web_komplet_still.flv", "title": "Komplet stille"},
-                   {"film": "ani_web_orbit.flv", "title": "Orbital"}]
+    + for film in [{"film": "ani_web_detail_heleKvaern.flv", "title": "Et kig ind i kværnen"},
+                   {"film": "ani_web_detail_hel.flv", "title": "Kværndrev med spil, blancesejle og langjern"},
+                   {"film": "ani_web_detail_uText.flv", "title": "Balancesejle skilt ad"},
+                   {"film": "ani_web_komplet_rotation.flv", "title": "Rundt om kværnen"},
+                   {"film": "ani_web_komplet_still.flv", "title": "Kværnen med og uden ringkar"},
+                   {"film": "ani_web_orbit.flv", "title": "Hele vejen rundt om kværnen"}]
      .filmcontainer
       padding: 0 160px; margin: 20px; margin-bottom: 50px;
       + let id = guid
@@ -428,5 +444,3 @@ def animations
          | {film["title"]}
         div(id={id})
         - filmplayer {id} {"/films/" ++ film["film"]} {550} {400}
-
-

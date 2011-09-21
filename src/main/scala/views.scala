@@ -147,7 +147,6 @@ object Views {
         
         val film = films get group.number
         
-        println(group.number)
         TemplateResponse(
           "main.article", 
           "word" -> realWord,

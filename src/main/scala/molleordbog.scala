@@ -23,7 +23,7 @@ class MolleOrdbog extends HttpServlet {
     val ms = MemcacheServiceFactory getMemcacheService
     val req = new HttpRequest(request)
     
-    val shouldCache = false //req.method == GET
+    val shouldCache = req.method == GET
     val mini = req miniRequest 
     var cached = if (shouldCache) { ms.get(mini) } else { null } 
     
