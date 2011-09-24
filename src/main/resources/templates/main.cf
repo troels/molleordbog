@@ -50,8 +50,7 @@ def header
        ul + for submenuitem in menuitem["children"]
          li(onclick={"window.location.href=\"" ++ submenuitem["url"] ++ "\""})
           | { submenuitem["name"] }
-
- br(clear="both")
+ br(style="clear: both")
 
 def footer
  .container #footer
@@ -135,7 +134,7 @@ def synonyms synonyms word={""}
          body: | Vis&nbsp;alle
          click: | $(this).parent().find('span').show(); $(this).hide(); 
    
-def article article film word={""}
+def article article film host word={""}
  - main 
   body: 
    #article
@@ -177,7 +176,7 @@ def article article film word={""}
       #film
        display: none; margin-left: 23px; margin-top: 40px;
        #filminner
-       - filmplayer {"filminner"} {"/films/" ++ film} {550} {400} 
+       - filmplayer {"filminner"} {"http://" ++ host ++ "/films/" ++ film} {550} {400} 
    - clear
 
 def search seed={""}
@@ -190,7 +189,7 @@ def search seed={""}
     form(method="GET" action="/ordbog/opslag/" id="soegeform")
      div
       margin-left: 10px; margin-bottom: 10px; font-size: 90%;
-      | Søg efter ord eller udtryk.&nbsp;&nbsp;Søgefeltet vil prøve at autokomplementere.<br/>
+      | Søg efter ord eller udtryk.<br/>
       + if seed != ""
        span
         color: red;
@@ -200,7 +199,8 @@ def search seed={""}
      - jscript
       script: 
        | $("#soegefelt").autocomplete({"{"}'source': '/ordbog/autocomplete/',
-       |                                   'select': function () {"{"} $("#soegeform").submit(); {"}"}
+       |                                   'select': function (e, ui) {"{"} $("#soegefelt").attr('value', ui.item.value); 
+       |                                                                    $("#soegeform").submit(); {"}"}
        | {"}"});
        | $("#soegefelt").focus(function () {"{"} $(this).select(); {"}"});
        | $("#soegefelt").focus();
@@ -323,7 +323,11 @@ def millbrowser_ajax vsp subjects
       |                             { excision.y } * img.height() / { vsp.height } , 
       |                             { excision.width } * img.width() / { vsp.width } , 
       |                             { excision.height } * img.height() / { vsp.height }, 
-      |                            "{ if excision.picture ("/visuel/browse/" ++ excision.picture.getName ++ "/") ""}",
+      + if excision.picture
+       | "{ "/visuel/browse/" ++ excision.picture.getName ++ "/" }"
+      + else 
+       | ""
+      |, 
       |                            "{ if excision.name excision.name ""}",
       |                            "{ if excision.title excision.title "" }"
       | );
@@ -424,7 +428,7 @@ def filmplayer id fn width height
    |   width: {width}
    |   {"}"});
 
-def animations
+def animations host
  - main
   body: 
     h1
@@ -443,4 +447,4 @@ def animations
          text-align: center;
          | {film["title"]}
         div(id={id})
-        - filmplayer {id} {"/films/" ++ film["film"]} {550} {400}
+        - filmplayer {id} {"http://" ++ host ++ "/films/" ++ film["film"]} {550} {400}

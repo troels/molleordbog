@@ -33,6 +33,7 @@ abstract class Request {
 
   def method: HttpMethod
   def uri: String
+  def host: String
   
   def getArg(key: String): Option[String]
   def getArgs(key: String): List[String]
@@ -73,7 +74,7 @@ abstract class Response extends Serializable {
   }
 }
 
-case class MiniHttpRequest(method: String, uri: String, args: Array[(String, Array[String])]) extends Serializable
+case class MiniHttpRequest(method: String, host: String, uri: String, args: Array[(String, Array[String])]) extends Serializable
 
 class HttpRequest(request: HttpServletRequest, requestAttributes: Map[String, AnyRef] = Map()) extends Request  {
   override def getHeaders(key: String) = (request getHeaders key).asInstanceOf[java.util.Enumeration[String]]
@@ -82,7 +83,8 @@ class HttpRequest(request: HttpServletRequest, requestAttributes: Map[String, An
   override def method = HttpMethod fromString (request getMethod) get
 
   override def uri = request getRequestURI
-  
+  override def host = request getServerName
+
   val arg: Map[String, List[String]] = {
     val params = request getParameterNames
 
@@ -93,7 +95,7 @@ class HttpRequest(request: HttpServletRequest, requestAttributes: Map[String, An
     } toMap
   }  
   
-  def miniRequest = MiniHttpRequest(method toString, uri, arg map { case (k, v) => (k -> (v toArray)) } toArray)
+  def miniRequest = MiniHttpRequest(method toString, host, uri, arg map { case (k, v) => (k -> (v toArray)) } toArray)
 
   override def getArg(key: String) = getArgs(key) headOption
   override def getArgs(key: String) = arg get key getOrElse List()
@@ -120,6 +122,7 @@ class MockHttpRequest(
     override def getHeaders(key: String) = headers getOrElse (key, List()) toIterator
     override def getHeader(key: String) = headers getOrElse (key, List()) headOption
     
+    override def host: String = "yadayada"
     override def getArg(key: String) = getArgs(key) headOption
     override def getArgs(key: String) = args get key getOrElse List()
     

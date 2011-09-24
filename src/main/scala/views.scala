@@ -152,6 +152,7 @@ object Views {
           "word" -> realWord,
           "synonym" -> syn, 
           "film" -> film,
+          "host" -> req.host,
           "article" -> group)
       }
 
@@ -166,7 +167,8 @@ object Views {
     TemplateResponse(
       "main.article", 
       "film" -> film,
-      "article" -> sg
+      "article" -> sg,
+      "host" -> req.host
     )
   }
 
@@ -330,7 +332,6 @@ object Views {
         } toList
       } else List()
       
-      
       TemplateResponse(if (req isAjax) "main.millbrowser_ajax" else  "main.millbrowser", 
                        "vsp" -> vsp, "subjects" -> (words ++ studiedSubjects))
     }
@@ -385,6 +386,6 @@ object Views {
   }
 
   def animations: View = {
-    req => TemplateResponse("main.animations")
+    req => TemplateResponse("main.animations", "host" -> req.host)
   }
 }
